@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -File \".specify/scripts/powershell/resolve-template.ps1\" \"constitution-template\" \"-Json\")",
+      "Bash(powershell.exe -File \".specify/scripts/powershell/resolve-template.ps1\" \"spec-template\" \"-Json\")"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "enableAllProjectMcpServers": true
+}
