@@ -1,0 +1,73 @@
+---
+import Layout from '../layouts/Layout.astro'
+import FormularioInscripcion from '../components/FormularioInscripcion'
+---
+
+<Layout>
+  <header>
+    <h1>Recreativa Barra Honda</h1>
+    <nav>
+      <a href="#info">Información</a>
+      <a href="#horarios">Horarios</a>
+      <a href="#ubicacion">Ubicación</a>
+      <a href="#precios">Precios</a>
+      <a href="#galeria">Galería</a>
+      <a href="#inscripcion">Inscripción</a>
+    </nav>
+  </header>
+
+  <section id="info">
+    <h2>¿Quiénes somos?</h2>
+    <p>
+      La Recreativa Barra Honda es un espacio de encuentro, actividad física y recreación
+      para toda la comunidad de Barra Honda, Nicoya, Costa Rica. Ofrecemos actividades
+      recreativas y deportivas en un ambiente familiar y seguro, abierto a personas de
+      todas las edades.
+    </p>
+  </section>
+
+  <section id="horarios">
+    <h2>Horarios</h2>
+    <ul>
+      <li><strong>Lunes a viernes:</strong> 7:00 a.m. – 9:00 p.m.</li>
+      <li><strong>Sábados:</strong> 8:00 a.m. – 6:00 p.m.</li>
+      <li><strong>Domingos y feriados:</strong> 9:00 a.m. – 3:00 p.m.</li>
+    </ul>
+  </section>
+
+  <section id="ubicacion">
+    <h2>Ubicación</h2>
+    <p>Barra Honda, Nicoya, Guanacaste, Costa Rica.</p>
+    <p>A 200 metros del centro de Barra Honda, frente al polideportivo.</p>
+  </section>
+
+  <section id="precios">
+    <h2>Precios y membresías</h2>
+    <ul>
+      <li><strong>Inscripción:</strong> ₡5 000</li>
+      <li><strong>Mensualidad adultos:</strong> ₡15 000</li>
+      <li><strong>Mensualidad estudiantes:</strong> ₡10 000</li>
+    </ul>
+    <p>
+      <em>
+        El pago se realiza por transferencia bancaria o SINPE Móvil. Una vez pagado,
+        adjunta el comprobante en el formulario de inscripción más abajo.
+      </em>
+    </p>
+  </section>
+
+  <section id="galeria">
+    <h2>Galería</h2>
+    <p>Próximamente fotos de las instalaciones.</p>
+  </section>
+
+  <section id="inscripcion">
+    <h2>Formulario de inscripción</h2>
+    <p>
+      Completa el formulario con tus datos personales y adjunta el comprobante de tu pago
+      para registrar tu solicitud de inscripción. Recibirás un correo electrónico cuando
+      tu inscripción sea revisada.
+    </p>
+    <FormularioInscripcion client:load />
+  </section>
+</Layout>

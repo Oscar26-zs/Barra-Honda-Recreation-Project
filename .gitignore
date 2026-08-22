@@ -1,0 +1,17 @@
+# Variables de entorno — nunca commitear secretos
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencias
+node_modules/
+
+# Build outputs
+dist/
+.astro/
+
+# Editor / OS
+.DS_Store
+*.log
+.vscode/settings.json

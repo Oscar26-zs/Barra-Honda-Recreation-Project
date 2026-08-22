@@ -1,8 +1,10 @@
 <!--
 INFORME DE IMPACTO DE SINCRONIZACIÓN
 =====================================
-Cambio de versión: 1.0.0 → 1.1.0
-Principios modificados: todos traducidos al español (sin cambios semánticos)
+Cambio de versión: 1.1.0 → 1.1.1
+Principios modificados:
+  - I. Stack Tecnológico Fijo: aclaración de estructura monorepo (misma repo, carpetas
+    independientes /sitio y /admin — sin repos separados ni código compartido)
 Secciones añadidas: ninguna
 Secciones eliminadas: ninguna
 TODOs pendientes: ninguno
@@ -18,11 +20,15 @@ El stack tecnológico está definido para todo el ciclo de vida del proyecto. Pr
 introducir alternativas está PROHIBIDO salvo que el propietario del proyecto lo solicite
 explícitamente por escrito.
 
-- **Sitio público**: Astro con contenido estático (información general, horarios, ubicación,
+- **Sitio público**: Carpeta `/sitio` dentro del mismo repositorio (monorepo), construida
+  con Astro. Contiene contenido estático (información general, horarios, ubicación,
   precios, galería). El formulario de inscripción es la ÚNICA isla dinámica, implementada
   con React, Vue o Svelte como isla interactiva de Astro.
-- **Panel administrativo**: Proyecto separado construido con React + Vite. NO DEBE compartir
-  código fuente ni artefactos de build con el sitio público en Astro.
+- **Panel administrativo**: Carpeta `/admin` dentro del mismo repositorio (monorepo),
+  construida con React + Vite. Tiene su propio `package.json`, `node_modules` y proceso
+  de build independiente. NO comparte código fuente, componentes ni dependencias con el
+  sitio público. El monorepo es solo un contenedor de git; ambos proyectos son autónomos
+  en código, build y despliegue.
 - **Backend / capa de datos**: Únicamente Supabase (PostgreSQL, Auth, Storage). No se
   permite ningún backend personalizado adicional.
 - **Almacenamiento de comprobantes de pago**: Supabase Storage, bucket privado. Cloudinary
@@ -202,4 +208,4 @@ proyecto web de la Recreativa Barra Honda.
 - Cualquier conflicto aparente entre la constitución y un spec/plan DEBE resolverse a favor
   de la constitución, salvo que se apruebe una enmienda.
 
-**Versión**: 1.1.0 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-22
+**Versión**: 1.1.1 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-22
