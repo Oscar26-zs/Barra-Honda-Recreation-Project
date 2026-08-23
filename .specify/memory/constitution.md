@@ -1,11 +1,28 @@
 <!--
 INFORME DE IMPACTO DE SINCRONIZACIÓN
 =====================================
-Cambio de versión: 1.1.0 → 1.1.1
+Cambio de versión: 1.1.1 → 2.0.0
 Principios modificados:
-  - I. Stack Tecnológico Fijo: aclaración de estructura monorepo (misma repo, carpetas
-    independientes /sitio y /admin — sin repos separados ni código compartido)
-Secciones añadidas: ninguna
+  - I. Stack Tecnológico Fijo: el sitio /sitio pasa de landing page única a sitio
+    multipágina (Home, Precios/Inscripción, Galería, Consultar mi inscripción); las islas
+    interactivas son ahora dos (formulario de inscripción y consulta de estado por
+    folio + cédula).
+  - II. Seguridad de Datos Públicos: el INSERT público se extiende a `inscripciones` y
+    `participantes` en una misma transacción; se añade la única excepción de lectura
+    pública controlada (RPC SECURITY DEFINER por folio + cédula, nunca SELECT directo);
+    el principio pasa a ser incompatible con la versión anterior ("solo INSERT, nunca
+    leer" tiene ahora una excepción controlada y documentada).
+Principios añadidos:
+  - VIII. Tarifas con Promoción por Tiempo Limitado: tabla `tarifas` administrable desde
+    el panel admin, cálculo de precio exclusivamente en servidor (función/trigger
+    PostgreSQL), monto congelado en la fila de inscripción, zona horaria
+    America/Costa_Rica explícita en todo momento. Cierra y elimina la pregunta abierta
+    anterior sobre fechas de vigencia administrables; no queda ningún TODO pendiente
+    sobre este punto.
+  - IX. Modelo de Inscripción Grupal y Consulta Pública de Estado: dos tablas
+    (`inscripciones` y `participantes`), folio único legible (BH-2026-XXXX), datos de
+    contacto únicamente del responsable del grupo, consulta de estado vía RPC
+    SECURITY DEFINER (folio + cédula de cualquier participante del grupo).
 Secciones eliminadas: ninguna
 TODOs pendientes: ninguno
 -->
@@ -21,9 +38,20 @@ introducir alternativas está PROHIBIDO salvo que el propietario del proyecto lo
 explícitamente por escrito.
 
 - **Sitio público**: Carpeta `/sitio` dentro del mismo repositorio (monorepo), construida
-  con Astro. Contiene contenido estático (información general, horarios, ubicación,
-  precios, galería). El formulario de inscripción es la ÚNICA isla dinámica, implementada
-  con React, Vue o Svelte como isla interactiva de Astro.
+  con Astro. Es un sitio **multipágina** con, como mínimo, las siguientes páginas
+  separadas (referencia de estructura y estilo: rutatempisquemtb.com — múltiples páginas,
+  no un solo scroll):
+  - **Home**: presentación general, resumen del evento, llamado a inscripción.
+  - **Precios / Inscripción**: tarifas vigentes + formulario de inscripción (isla
+    interactiva n.º 1).
+  - **Galería**: imágenes de ediciones anteriores e instalaciones.
+  - **Consultar mi inscripción**: formulario de búsqueda por folio + cédula y resultado
+    de estado (isla interactiva n.º 2).
+
+  El contenido de todas las páginas es estático, salvo las dos islas interactivas
+  descritas, implementadas con React, Vue o Svelte como islas de Astro. No existe otra
+  lógica dinámica en el sitio público.
+
 - **Panel administrativo**: Carpeta `/admin` dentro del mismo repositorio (monorepo),
   construida con React + Vite. Tiene su propio `package.json`, `node_modules` y proceso
   de build independiente. NO comparte código fuente, componentes ni dependencias con el
@@ -47,19 +75,31 @@ del stack invalidaría los supuestos de costo y complejidad establecidos durante
 
 ### II. Seguridad de Datos Públicos
 
-Los usuarios públicos SOLO pueden insertar (INSERT) registros de inscripción. Leer o
-modificar inscripciones enviadas por otros usuarios está PROHIBIDO.
+Los usuarios públicos SOLO pueden insertar (INSERT) registros de inscripción y sus
+participantes asociados. Leer, modificar o eliminar inscripciones o participantes
+directamente vía RLS estándar está PROHIBIDO, con la única excepción explícita y
+controlada descrita a continuación.
 
-- La Seguridad a Nivel de Fila (RLS) de Supabase DEBE estar habilitada en la tabla
-  `inscripciones`.
-- La política INSERT para el rol anónimo/público DEBE estar limitada únicamente a la
-  solicitud actual (sin SELECT, UPDATE ni DELETE para el rol público).
-- Ningún código del lado del cliente DEBE exponer datos de inscripciones más allá de la
-  confirmación del envío exitoso del propio usuario.
+- La Seguridad a Nivel de Fila (RLS) de Supabase DEBE estar habilitada en las tablas
+  `inscripciones` y `participantes`.
+- La política INSERT para el rol anónimo/público sobre `inscripciones` y `participantes`
+  DEBE estar limitada al envío de la solicitud actual. Ambas tablas se insertan en la
+  misma transacción (el registro del grupo y sus integrantes ocurren de forma atómica).
+- El rol público NO DEBE tener políticas SELECT, UPDATE ni DELETE sobre ninguna de las
+  dos tablas vía RLS estándar.
+- **Única excepción de lectura pública**: la consulta del estado de la propia inscripción
+  se resuelve mediante una función RPC de PostgreSQL con `SECURITY DEFINER` (ver
+  Principio IX). El cliente la invoca con la clave `anon` usando `supabase.rpc(...)`.
+  Esta RPC es el ÚNICO camino por el que el público puede obtener datos de una
+  inscripción; no existe ningún endpoint ni política que permita listar o enumerar
+  inscripciones.
+- Ningún código del lado del cliente DEBE exponer datos de inscripciones de otros usuarios
+  más allá de la confirmación del envío exitoso y la consulta de estado propia (vía RPC).
 
 **Justificación**: Los registros de inscripción contienen datos personales. Filtrar datos
 de otros usuarios constituiría una violación de privacidad y podría exponer a la organización
-a responsabilidad legal.
+a responsabilidad legal. La excepción RPC está diseñada para revelar únicamente el estado
+de la inscripción propia, sin posibilidad de enumeración.
 
 ### III. Almacenamiento Privado de Comprobantes
 
@@ -143,13 +183,133 @@ proyecto antes de tomar una decisión de diseño o arquitectura.
 **Justificación**: Las decisiones no documentadas crean deuda técnica invisible y hacen que
 los cambios futuros sean impredecibles.
 
+### VIII. Tarifas con Promoción por Tiempo Limitado
+
+Las tarifas del evento son administrables y pueden tener períodos de vigencia distintos
+(ej. precio de madrugada, precio regular). El cálculo del precio final SIEMPRE ocurre en
+el servidor; el cliente es solo informativo.
+
+**Tabla `tarifas`** (administrable desde el panel admin, no hardcodeada en código ni en
+variables de entorno). Columnas mínimas obligatorias:
+
+| Columna | Descripción |
+|---|---|
+| `modalidad` | Nombre legible de la tarifa (ej. "Madrugada", "Regular") |
+| `monto_por_persona` | Precio unitario por participante |
+| `fecha_inicio` | Inicio de vigencia (con zona horaria) |
+| `fecha_fin` | Fin de vigencia (con zona horaria) |
+| `activa` | Indicador booleano de habilitación manual |
+
+**Reglas obligatorias**:
+
+1. **Cálculo exclusivo en servidor**: el precio final NUNCA se confía desde el cliente.
+   El sitio público (Astro) PUEDE mostrar la tarifa vigente de forma informativa para UX,
+   pero el cálculo real ocurre en una función o trigger de PostgreSQL en Supabase,
+   ejecutado en el momento del INSERT de la inscripción.
+
+2. **Zona horaria explícita**: el servidor determina la modalidad vigente comparando
+   `now() AT TIME ZONE 'America/Costa_Rica'` contra `fecha_inicio`/`fecha_fin` de la
+   tabla `tarifas`. Nunca se asume UTC por defecto.
+
+3. **Monto congelado**: el campo `monto_esperado` de la tabla `inscripciones` se calcula
+   como `monto_por_persona × cantidad_personas` de la modalidad vigente en el instante del
+   INSERT y se persiste de forma inmutable. No es un valor derivado que se recalcule si las
+   tarifas cambian en el futuro.
+
+4. **Cliente ignorado para el precio**: cualquier campo de "modalidad" o "monto" que el
+   cliente envíe en la solicitud es únicamente informativo y DEBE ser ignorado por el
+   cálculo real. El servidor es la única fuente de verdad del precio.
+
+5. **Criterio temporal**: la vigencia se determina con la fecha del servidor en el momento
+   del INSERT, no con la fecha en que el usuario abrió el formulario.
+
+**Justificación**: Protege contra manipulaciones de precio desde el cliente, garantiza que
+los registros contables reflejen el precio real cobrado en el momento de la inscripción, y
+permite administrar promociones por tiempo limitado sin tocar el código. Esta decisión
+cierra definitivamente la pregunta abierta anterior sobre fechas de vigencia administrables.
+
+### IX. Modelo de Inscripción Grupal y Consulta Pública de Estado
+
+Un mismo envío del formulario registra a un grupo de una o más personas bajo un único
+comprobante de pago, un único estado y un único folio legible.
+
+**Modelo de datos — dos tablas**:
+
+**Tabla `inscripciones`** (representa el envío/grupo):
+
+| Columna | Descripción |
+|---|---|
+| `folio` | Identificador único legible (ej. `BH-2026-0142`) |
+| `modalidad_tarifa` | Modalidad aplicada (congelada en el momento del INSERT, ver Principio VIII) |
+| `cantidad_personas` | Número de participantes del grupo |
+| `monto_esperado` | Monto total calculado en servidor y congelado (ver Principio VIII) |
+| `url_comprobante` | URL del comprobante de pago en Supabase Storage |
+| `estado` | `pendiente` / `aprobada` / `rechazada` |
+| `nombre_contacto` | Nombre de quien hace el envío |
+| `telefono_contacto` | Teléfono de contacto del responsable del grupo |
+| `correo_contacto` | Correo electrónico del responsable del grupo |
+| `fecha_creacion` | Timestamp de creación |
+
+**Tabla `participantes`** (una fila por persona inscrita):
+
+| Columna | Descripción |
+|---|---|
+| `inscripcion_id` | Llave foránea → `inscripciones` |
+| `cedula` | Número de identificación |
+| `nombre` | Nombre del participante |
+| `apellidos` | Apellidos del participante |
+| `talla_camisa` | Talla de camisa |
+
+**Reglas obligatorias**:
+
+1. **Datos de contacto solo del responsable del grupo**: teléfono y correo se capturan
+   únicamente para quien hace el envío, no por cada participante individual. Esto reduce
+   fricción en el formulario y minimiza los datos personales de terceros almacenados,
+   en alineación con el Principio V.
+
+2. **INSERT atómico**: el envío del formulario inserta una fila en `inscripciones` y las
+   filas correspondientes en `participantes` en una única transacción. El rol público tiene
+   INSERT sobre ambas tablas; nunca SELECT, UPDATE ni DELETE directo vía RLS (ver
+   Principio II).
+
+3. **Consulta pública de estado — RPC SECURITY DEFINER**: el público puede consultar el
+   estado de una inscripción combinando folio + cédula de cualquiera de los participantes
+   de ese folio. El mecanismo técnico es una función RPC de PostgreSQL con
+   `SECURITY DEFINER`, invocada mediante `supabase.rpc(...)` con la clave `anon`. La
+   función devuelve el estado y los datos del grupo únicamente si hay coincidencia exacta.
+
+4. **Sin enumeración posible**: no debe existir ningún endpoint ni política que permita
+   listar inscripciones. La RPC solo devuelve datos si la combinación folio + cédula es
+   exacta; en caso contrario responde de forma genérica (sin indicar cuál de los dos
+   datos falló), como mitigación básica contra fuerza bruta y enumeración.
+
+5. **RPC sobre Edge Function para este caso**: se elige la función RPC de PostgreSQL
+   (y no una Edge Function) porque la consulta de estado no requiere secretos externos ni
+   lógica de terceros, y evita una pieza móvil adicional, en línea con el Principio V. Las
+   Edge Functions quedan reservadas para operaciones que requieren secretos de servidor
+   (ej. Resend para notificaciones).
+
+**Justificación**: El modelo de dos tablas separa la responsabilidad del envío (grupo +
+comprobante) de los datos individuales de cada participante, facilitando la administración y
+el control de acceso. La consulta por folio + cédula permite a los participantes verificar
+su estado sin necesidad de autenticación ni de exponer datos de otros grupos.
+
 ## Requisitos de Seguridad
 
 Todos los controles de seguridad que se indican a continuación son INNEGOCIABLES y DEBEN
 estar presentes antes de que cualquier funcionalidad se considere completa.
 
 - **RLS en `inscripciones`**: habilitada; el rol público tiene solo INSERT; el rol admin
+  tiene acceso completo (SELECT, INSERT, UPDATE, DELETE).
+- **RLS en `participantes`**: habilitada; el rol público tiene solo INSERT; el rol admin
   tiene acceso completo.
+- **RPC SECURITY DEFINER para consulta de estado**: la función RPC (folio + cédula) es el
+  ÚNICO camino de lectura pública sobre inscripciones. Debe responder de forma genérica en
+  caso de no encontrar coincidencia; no debe indicar si el fallo fue en el folio o en la
+  cédula.
+- **Tabla `tarifas` — acceso restringido**: el rol público NO tiene ningún acceso directo
+  a la tabla `tarifas`. Solo el rol admin puede leer y modificar tarifas. El cálculo del
+  precio lo realiza el servidor internamente; el cliente no interactúa con esta tabla.
 - **RLS en el bucket de Storage `comprobantes`**: privado; solo el rol admin puede
   SELECT/GET; el rol público no tiene acceso de lectura.
 - **Sin clave de rol de servicio en el cliente**: la clave `service_role` de Supabase NUNCA
@@ -208,4 +368,4 @@ proyecto web de la Recreativa Barra Honda.
 - Cualquier conflicto aparente entre la constitución y un spec/plan DEBE resolverse a favor
   de la constitución, salvo que se apruebe una enmienda.
 
-**Versión**: 1.1.1 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-22
+**Versión**: 2.0.0 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-22
