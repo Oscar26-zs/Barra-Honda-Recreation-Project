@@ -1,30 +1,40 @@
 <!--
 INFORME DE IMPACTO DE SINCRONIZACIÓN
 =====================================
-Cambio de versión: 1.1.1 → 2.0.0
-Principios modificados:
-  - I. Stack Tecnológico Fijo: el sitio /sitio pasa de landing page única a sitio
-    multipágina (Home, Precios/Inscripción, Galería, Consultar mi inscripción); las islas
-    interactivas son ahora dos (formulario de inscripción y consulta de estado por
-    folio + cédula).
-  - II. Seguridad de Datos Públicos: el INSERT público se extiende a `inscripciones` y
-    `participantes` en una misma transacción; se añade la única excepción de lectura
-    pública controlada (RPC SECURITY DEFINER por folio + cédula, nunca SELECT directo);
-    el principio pasa a ser incompatible con la versión anterior ("solo INSERT, nunca
-    leer" tiene ahora una excepción controlada y documentada).
-Principios añadidos:
-  - VIII. Tarifas con Promoción por Tiempo Limitado: tabla `tarifas` administrable desde
-    el panel admin, cálculo de precio exclusivamente en servidor (función/trigger
-    PostgreSQL), monto congelado en la fila de inscripción, zona horaria
-    America/Costa_Rica explícita en todo momento. Cierra y elimina la pregunta abierta
-    anterior sobre fechas de vigencia administrables; no queda ningún TODO pendiente
-    sobre este punto.
-  - IX. Modelo de Inscripción Grupal y Consulta Pública de Estado: dos tablas
-    (`inscripciones` y `participantes`), folio único legible (BH-2026-XXXX), datos de
-    contacto únicamente del responsable del grupo, consulta de estado vía RPC
-    SECURITY DEFINER (folio + cédula de cualquier participante del grupo).
-Secciones eliminadas: ninguna
-TODOs pendientes: ninguno
+Cambio de versión: 2.0.0 → 2.0.1 (PARCHE — corrección de coherencia interna)
+
+Corrección aplicada:
+  - Se resolvió una contradicción entre el Principio VIII y la sección "Requisitos de
+    Seguridad" respecto al acceso público a la tabla `tarifas`.
+    * Estado anterior (contradictorio): el Principio VIII, regla 1, indicaba que el
+      sitio público PUEDE mostrar la tarifa vigente para UX, pero "Requisitos de
+      Seguridad" declaraba que el rol público NO tenía ningún acceso a la tabla
+      `tarifas`, sin proveer ningún mecanismo técnico que permitiera resolver esa
+      contradicción.
+    * Corrección: se introduce la RPC de solo lectura `obtener_tarifa_vigente()`,
+      siguiendo el mismo patrón ya aprobado para la consulta de estado (Principio IX).
+      Esta RPC es invocable con la clave `anon` vía `supabase.rpc(...)` y devuelve
+      únicamente la modalidad, monto por persona y fecha de fin de vigencia de la
+      tarifa activa en el momento de la llamada. No expone historial, tarifas
+      futuras/pasadas ni ninguna otra columna. La tabla `tarifas` sigue SIN tener
+      política RLS de SELECT para el rol público; el único camino de lectura pública
+      es esta RPC. El cálculo vinculante del monto (trigger/función PostgreSQL en el
+      INSERT) no se modifica en absoluto.
+  - Aclaración de nomenclatura: el Principio VIII usaba "Madrugada" / "Regular" como
+    ejemplos de `modalidad`; el alcance original mencionaba "promocional" / "regular".
+    Se añade una nota explícita indicando que los valores definitivos de `modalidad`
+    DEBEN fijarse en `spec.md` antes de la implementación.
+
+Principios modificados en esta enmienda:
+  - VIII. Tarifas con Promoción por Tiempo Limitado: regla 1 ampliada para mencionar
+    `obtener_tarifa_vigente()` como el mecanismo formal de lectura pública; nota de
+    nomenclatura añadida.
+Secciones modificadas:
+  - Requisitos de Seguridad — ítem "Tabla `tarifas` — acceso restringido": actualizado
+    para reflejar que el único acceso público permitido es vía `obtener_tarifa_vigente()`,
+    y que la tabla sigue sin tener SELECT directo ni política RLS pública.
+TODOs pendientes:
+  - Fijar los valores exactos de `modalidad` en `spec.md` antes de la implementación.
 -->
 
 # Constitución — Recreativa Barra Honda
@@ -203,9 +213,29 @@ variables de entorno). Columnas mínimas obligatorias:
 **Reglas obligatorias**:
 
 1. **Cálculo exclusivo en servidor**: el precio final NUNCA se confía desde el cliente.
-   El sitio público (Astro) PUEDE mostrar la tarifa vigente de forma informativa para UX,
-   pero el cálculo real ocurre en una función o trigger de PostgreSQL en Supabase,
-   ejecutado en el momento del INSERT de la inscripción.
+   El sitio público (Astro) PUEDE mostrar la tarifa vigente de forma informativa para UX
+   invocando la RPC de solo lectura `obtener_tarifa_vigente()` con la clave `anon`
+   (ver más abajo). Esta RPC devuelve únicamente la modalidad, el monto por persona y la
+   fecha de fin de vigencia de la tarifa activa en ese instante; no expone historial ni
+   tarifas futuras/pasadas, y no participa en absoluto en el cálculo vinculante del monto.
+   El cálculo real ocurre exclusivamente en una función o trigger de PostgreSQL en Supabase,
+   ejecutado en el momento del INSERT de la inscripción (reglas 2–5 sin cambios).
+
+   **RPC `obtener_tarifa_vigente()` — lectura pública de tarifa activa**:
+   - Invocable con la clave `anon` mediante `supabase.rpc('obtener_tarifa_vigente')`.
+   - Implementada con `SECURITY DEFINER`, siguiendo el mismo patrón de la RPC de consulta
+     de estado (Principio IX).
+   - Devuelve ÚNICAMENTE: `modalidad`, `monto_por_persona`, `fecha_fin` de la tarifa cuyo
+     campo `activa = true` y cuya vigencia aplique al momento de la llamada.
+   - Es de solo lectura; nunca escribe ni decide montos.
+   - La tabla `tarifas` en sí NO tiene política RLS de SELECT para el rol público; esta RPC
+     es el único camino de lectura pública (ver "Requisitos de Seguridad").
+
+   **Nota sobre nomenclatura de `modalidad`**: los ejemplos en esta constitución
+   ("Madrugada", "Regular") son ilustrativos. Los valores exactos y definitivos de
+   `modalidad` (ej. "promocional" / "regular" u otros que decida el propietario) DEBEN
+   quedar fijados en `spec.md` antes de comenzar la implementación, para evitar
+   ambigüedad en validaciones de formulario y plantillas de correo.
 
 2. **Zona horaria explícita**: el servidor determina la modalidad vigente comparando
    `now() AT TIME ZONE 'America/Costa_Rica'` contra `fecha_inicio`/`fecha_fin` de la
@@ -307,9 +337,14 @@ estar presentes antes de que cualquier funcionalidad se considere completa.
   ÚNICO camino de lectura pública sobre inscripciones. Debe responder de forma genérica en
   caso de no encontrar coincidencia; no debe indicar si el fallo fue en el folio o en la
   cédula.
-- **Tabla `tarifas` — acceso restringido**: el rol público NO tiene ningún acceso directo
-  a la tabla `tarifas`. Solo el rol admin puede leer y modificar tarifas. El cálculo del
-  precio lo realiza el servidor internamente; el cliente no interactúa con esta tabla.
+- **Tabla `tarifas` — acceso restringido**: la tabla `tarifas` NO tiene política RLS de
+  SELECT para el rol público, ni ningún acceso directo desde el cliente. Solo el rol admin
+  puede leer y modificar la tabla directamente. El único acceso de lectura pública
+  permitido es a través de la RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, clave
+  `anon`), que expone exclusivamente la modalidad activa, monto por persona y fecha de fin
+  de vigencia, sin historial ni columnas adicionales (ver Principio VIII, regla 1). El
+  cálculo vinculante del precio sigue ocurriendo exclusivamente en el servidor (trigger/
+  función PostgreSQL en el INSERT); esta RPC es puramente informativa para UX.
 - **RLS en el bucket de Storage `comprobantes`**: privado; solo el rol admin puede
   SELECT/GET; el rol público no tiene acceso de lectura.
 - **Sin clave de rol de servicio en el cliente**: la clave `service_role` de Supabase NUNCA
@@ -368,4 +403,4 @@ proyecto web de la Recreativa Barra Honda.
 - Cualquier conflicto aparente entre la constitución y un spec/plan DEBE resolverse a favor
   de la constitución, salvo que se apruebe una enmienda.
 
-**Versión**: 2.0.0 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-22
+**Versión**: 2.0.1 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-23
