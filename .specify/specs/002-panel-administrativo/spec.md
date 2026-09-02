@@ -262,9 +262,9 @@ Las demás entidades que este módulo opera están definidas completamente en
 - **SC-005**: El administrador puede revisar el detalle completo (datos del responsable,
   lista de participantes y comprobante) de una inscripción y tomar una decisión en menos de
   2 minutos por inscripción.
-- **SC-006**: El 100% de los descuentos muestran el estado correcto (Programado/Activo/
+- **SC-008**: El 100% de los descuentos muestran el estado correcto (Programado/Activo/
   Vencido) según la fecha actual, sin intervención manual del administrador.
-- **SC-007**: El administrador puede crear un descuento (configurar nombre, fechas,
+- **SC-009**: El administrador puede crear un descuento (configurar nombre, fechas,
   porcentaje y tarifa aplicable) en menos de 2 minutos desde la pantalla de Tarifas.
 
 ---

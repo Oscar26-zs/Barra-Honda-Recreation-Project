@@ -38,6 +38,6 @@
 Spec derivado de la división del spec original `001-admin-inscripciones` (archivado en
 `_archive/`). Cubre HU3 (Revisión de Inscripciones, P3), HU4 (Aprobación/Rechazo con
 Notificación, P4) y HU5 (Gestión de Descuentos, P5), con 15 requisitos funcionales
-(FR-010 a FR-020 y FR-027 a FR-031) y 4 criterios de éxito (SC-003, SC-005, SC-006, SC-007).
+(FR-010 a FR-020 y FR-027 a FR-031) y 4 criterios de éxito (SC-003, SC-005, SC-008, SC-009).
 
 Ready for `/speckit-plan`.

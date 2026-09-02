@@ -4,6 +4,16 @@
 
 Ambos módulos operan sobre las mismas tablas de base de datos. Cualquier cambio en la definición de estas entidades debe actualizarse aquí y revisarse en los dos specs que las referencian.
 
+## Propiedad de las migraciones
+
+Las migraciones de las tablas `inscripciones`, `participantes` y `tarifas` viven en
+`admin/supabase/migrations/` y son responsabilidad del módulo
+**002-panel-administrativo**. El módulo 001-sitio-publico **consume** estas tablas
+vía RLS (INSERT para el rol público) y RPCs (`obtener_tarifa_vigente()`,
+consulta de estado), pero **NO debe** crear ni mantener migraciones propias para
+ellas. Cualquier cambio de esquema a estas tablas se coordina a través de este
+módulo (002), que es la fuente de verdad de la estructura de la base de datos.
+
 ---
 
 ## [PENDIENTE DE DECISIÓN] — Valores de `modalidad`
