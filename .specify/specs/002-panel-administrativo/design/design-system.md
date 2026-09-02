@@ -127,6 +127,10 @@ distinta.
   incompleto): mismo azul pero con opacidad reducida (~tono más claro/desaturado, visualmente
   un azul pastel) — es decir, el botón primario deshabilitado no es gris, sigue siendo azul
   pero "apagado".
+- **Comportamiento sticky confirmado (mobile, 2026-09-01)**: "Guardar descuento" es el único
+  botón primario que se fija al fondo de la pantalla (`position: sticky`). En contraste, los
+  botones "Aprobar"/"Rechazar" del detalle de inscripción **no** son sticky — fluyen en el
+  scroll normal debajo del comprobante de pago. Ver `panel-layout.md` → Mobile.
 
 **Secundario** (`Exportar a Excel`, `Filtros`)
 - Fondo `--azul-barra-tint` (`#EFF4FF`), texto `--azul-barra`, radio píldora.
@@ -202,8 +206,74 @@ deslizó desde abajo — verificar valor exacto en el código fuente.
 
 ## Known Gaps
 
-- **Estados hover/focus** no fueron capturados (requieren interacción sostenida que esta
-  inspección automatizada no reprodujo).
-- **Tipografía tabular real**: confirmar si el proyecto final quiere mantener Manrope en
-  folios/montos (como está hoy en el prototipo) o introducir IBM Plex Mono como en el sitio
-  público — actualmente hay una inconsistencia entre ambos productos hermanos.
+### 1. Estados hover/focus del botón
+
+**Qué dice el diseño actual**: el prototype no expone estilos de hover/focus en ningún
+componente del panel; el prototipo Figma no se inspeccionó con interacción sostenida.
+
+**Qué falta**: en el código React real, los botones de acción (primarios, secundarios,
+outline) y los chips de filtro deben tener estados `:hover` y `:focus-visible` definidos.
+Se recomienda definir un patrón único: `opacity: 0.9` en hover + un halo suave
+(`box-shadow: 0 0 0 2px rgba(8,97,205,0.2)`) en focus-visible, coherente con lo que el
+sitio público ya hace con `search-pill-focused`.
+
+**Dónde afecta si no se resuelve**: accesibilidad (usuarios que navegan con teclado no
+reciben feedback visual de foco); apariencia inconsistente entre elementos interactivos.
+
+---
+
+### 2. Estilo del botón "Exportar a Excel" (desktop) — sólido vs. tint
+
+**Qué dice el diseño actual** (prototipo Figma, lectura de `getComputedStyle`):
+
+| Propiedad | Valor computado (Figma) |
+|---|---|
+| Fondo | `--azul-barra-tint` (`#EFF4FF`) |
+| Texto | `--azul-barra` (`#0861CD`) |
+| Peso de fuente | **700** (bold) — el único botón en todo el panel con este peso |
+
+**Qué dicen las capturas de implementación** (mobile, 2026-09-01):
+
+| Propiedad | Valor capturado (mobile) |
+|---|---|
+| Fondo | `--azul-barra` sólido (`#0861CD`) |
+| Texto | Blanco |
+| Ícono | Descarga (download) |
+| Texto visible | "Exportar" (abreviado vs. "Exportar a Excel" en desktop) |
+
+**La contradicción**: en desktop el botón se clasificó como "Secundario" (tint), pero la
+captura visual lo muestra como **Primario** (sólido azul + blanco). En mobile se confirmó
+que es sólido azul + blanco. ¿Cuál de los dos es correcto para desktop?
+
+**Qué falta verificar**: inspeccionar el botón "Exportar a Excel" **en la versión desktop del
+prototipo o en el código fuente real** para confirmar: fondo sólido (`--azul-barra`) o tint
+(`--azul-barra-tint`), y peso de fuente 600 o 700. Si es sólido (como en mobile), la tabla
+de tipografía de este archivo (línea 89) y la clasificación "Secundario" de Botones están
+incorrectas y deben corregirse.
+
+**Dónde afecta si no se resuelve**: al implementar la barra de acciones de la pantalla
+Inscripciones (desktop), el botón "Exportar a Excel" podría quedar con el estilo incorrecto.
+
+---
+
+### 3. Dos tonos de azul en la pantalla de Tarifas ("Programado" vs. marca)
+
+**Qué dice el diseño actual**:
+
+| Token | Azul | Uso |
+|---|---|---|
+| `--azul-barra` | `#0861CD` (`rgb(8,97,205)`) | Marca del sistema (nav activo, botones primarios, títulos, folios, porcentaje) |
+| `--azul-cielo-texto` | `#4B80E8` (`rgb(75,128,232)`) | Texto del badge "Programado" en Descuentos |
+
+Ambos azules son de tono similar pero no idénticos; coexisten en la misma pantalla de
+Tarifas (el badge "Programado" al lado del badge "Activo" que usa verde `#1C7A34`).
+
+**Qué falta decidir**: ¿se unifica "Programado" al azul de marca (`--azul-barra`) o se
+mantiene como tono distinto como el diseño actual lo documenta? Si se unifica, el cambio más
+simple es que el badge "Programado" reutilice `--azul-barra` como color de texto (el fondo
+`#EFF4FF` ya es `--azul-barra-tint`, coherente con la marca). Si se decide mantener el tono
+distinto, no hay que hacer nada.
+
+**Dónde afecta si no se resuelve**: solo estético — puede generar una percepción de
+inconsistencia de marca para el usuario final, pero no afecta funcionalidad. No bloquea la
+implementación.

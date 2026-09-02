@@ -29,14 +29,15 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 - [x] Entidad Administrador definida completamente (exclusiva de este módulo)
+- [x] Entidad Descuento definida completamente (exclusiva de este módulo, no se duplica en `_shared/data-model.md`)
 - [x] Entidades compartidas referenciadas (no duplicadas) via `../_shared/data-model.md`
 - [x] [PENDIENTE DE DECISIÓN] sobre valores de `modalidad` centralizado en data-model.md
 
 ## Notes
 
 Spec derivado de la división del spec original `001-admin-inscripciones` (archivado en
-`_archive/`). Cubre HU3 (Revisión de Inscripciones, P3) e HU4 (Aprobación/Rechazo con
-Notificación, P4), con 11 requisitos funcionales (FR-010 a FR-020) y 2 criterios de éxito
-(SC-003, SC-005).
+`_archive/`). Cubre HU3 (Revisión de Inscripciones, P3), HU4 (Aprobación/Rechazo con
+Notificación, P4) y HU5 (Gestión de Descuentos, P5), con 15 requisitos funcionales
+(FR-010 a FR-020 y FR-027 a FR-031) y 4 criterios de éxito (SC-003, SC-005, SC-006, SC-007).
 
 Ready for `/speckit-plan`.

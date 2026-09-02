@@ -37,10 +37,11 @@ señalar explícitamente antes de implementar, no asumir.
 > 2. **Color del estado "Programado"** en Tarifas (`design-system.md` → Colors → Semánticos
 >    de estado): usa `#4B80E8`, distinto al `--azul-barra` (`#0861CD`). Señalar antes de
 >    implementar los badges de descuentos.
-> 3. **Comportamiento mobile** (`panel-layout.md` → Mobile): no verificado por inspección
->    de estilos computados — proviene de capturas de preview de Figma. Señalar antes de
->    implementar cualquier componente con lógica responsive (bottom tab bar, bottom sheet
->    de filtros, tarjetas de lista mobile).
+>
+> **RESUELTO:** el punto 3 (comportamiento mobile) quedó confirmado por capturas de pantalla
+> reales de la implementación mobile (2026-09-01). Ver [Mobile — confirmado por capturas de
+> implementación](design/panel-layout.md). Queda sin resolver únicamente para desktop el
+> detalle ya documentado de que "Aprobar"/"Rechazar" no son sticky y "Guardar descuento" sí lo es.
 
 ---
 
@@ -113,6 +114,55 @@ al correo del responsable del grupo.
 
 ---
 
+### Historia de Usuario 5 — Gestión de Descuentos (Prioridad: P5)
+
+**Aplicación**: Panel administrativo (`/admin`)
+
+El administrador de la recreativa, desde la pantalla de Tarifas, puede gestionar los
+descuentos que se aplican a las tarifas existentes: crear un descuento nuevo indicando su
+nombre, fecha de inicio, fecha de fin, el porcentaje de descuento y a qué tarifa aplica;
+editar un descuento ya existente; y eliminar uno. El sistema calcula automáticamente el
+estado de cada descuento (Programado/Activo/Vencido) según la fecha actual, sin que el
+administrador lo indique manualmente. El descuento afecta el precio final que ve el sitio
+público: en el formulario se muestra una vista previa en vivo ("precio original tachado →
+precio con descuento" en verde) conforme se configura.
+
+**Por qué esta prioridad**: Permite al administrador ofrecer promociones temporales sobre
+las tarifas base sin tocar la base de datos directamente y sin depender del desarrollo de
+cada campaña. Es la única gestión de precios que se expone al administrador en este módulo.
+
+**Prueba independiente**: Puede probarse creando un descuento con un rango de fechas que
+abarque la fecha actual, verificando que su estado se muestra como "Activo"; creando uno con
+fecha de inicio futura (estado "Programado") y uno con fecha de fin ya pasada (estado
+"Vencido"); y verificando que editar y eliminar descuentos funcionan y que la vista previa
+en vivo refleja el precio con descuento.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el administrador está en la pantalla de Tarifas, **cuando** selecciona
+   "+ Nuevo descuento" y completa nombre, fecha de inicio, fecha de fin, porcentaje y la
+   tarifa a la que aplica, y confirma, **entonces** el descuento se guarda y aparece en la
+   lista con su estado calculado automáticamente por fecha.
+2. **Dado** que el administrador configura un descuento con fecha de inicio futura, **cuando**
+   el sistema guarda el descuento, **entonces** su estado se muestra como "Programado" sin que
+   el administrador lo seleccione manualmente.
+3. **Dado** que el administrador configura un descuento con rango de fechas que incluye la
+   fecha actual, **cuando** el descuento está vigente, **entonces** su estado se muestra como
+   "Activo" automáticamente.
+4. **Dado** que el administrador configura un descuento con fecha de fin ya pasada, **cuando**
+   el sistema evalúa el descuento, **entonces** su estado se muestra como "Vencido"
+   automáticamente.
+5. **Dado** que el administrador está en la pantalla de Tarifas y selecciona "Editar" en un
+   descuento, **cuando** modifica cualquiera de sus campos y confirma, **entonces** los
+   cambios se guardan y la lista se actualiza.
+6. **Dado** que el administrador selecciona "Eliminar" en un descuento, **cuando** confirma
+   la eliminación, **entonces** el descuento se quita de la lista.
+7. **Dado** que el administrador configura el porcentaje y la tarifa aplicable de un
+   descuento nuevo, **cuando** ve el formulario, **entonces** la vista previa en vivo muestra
+   el "precio original tachado → precio con descuento" en verde y se actualiza en tiempo real.
+
+---
+
 ### Casos Límite
 
 - ¿Qué ocurre si el correo de notificación falla al enviarse? → El cambio de estado se
@@ -163,12 +213,36 @@ al correo del responsable del grupo.
 - **FR-020**: El envío del correo DEBE ocurrir sin intervención manual adicional del
   administrador y de forma transparente para él.
 
+**Gestión de Descuentos sobre tarifas**
+
+- **FR-027**: El administrador autenticado DEBE poder crear un descuento indicando nombre,
+  fecha de inicio, fecha de fin, porcentaje y la tarifa a la que aplica (o "todas").
+- **FR-028**: El administrador autenticado DEBE poder editar un descuento existente, y los
+  cambios DEBEN reflejarse en la lista de descuentos.
+- **FR-029**: El administrador autenticado DEBE poder eliminar un descuento existente, y el
+  descuento DEBE desaparecer de la lista.
+- **FR-030**: El estado de cada descuento (Programado/Activo/Vencido) DEBE calcularse
+  automáticamente a partir de la fecha actual y las fechas de inicio/fin configuradas; el
+  administrador NO DEBE poder fijar el estado manualmente.
+- **FR-031**: Un descuento configurado DEBE afectar el precio final que el sitio público
+  muestra o usa para las inscripciones de la tarifa a la que aplica. El cálculo del precio
+  con descuento pertenece al spec hermano (`001-sitio-publico`); este requisito solo cubre
+  que la configuración desde el panel incida en ese precio.
+
 ### Entidades Clave
 
 **Administrador** (exclusiva de este módulo): Usuario con acceso al panel de gestión
 (`/admin`). Se autentica con correo y contraseña vía Supabase Auth. Es el único tipo de
 usuario con privilegios de lectura y modificación directa sobre inscripciones y
 participantes.
+
+**Descuento** (exclusiva de este módulo): Promoción temporal aplicada sobre una tarifa
+existente. Atributos: `nombre`, `fecha_inicio`, `fecha_fin`, `porcentaje`, `aplica_a` (la
+tarifa afectada o "todas"), y un estado **calculado** (Programado/Activo/Vencido) derivado
+automáticamente de la fecha actual — no se almacena manualmente. Es exclusiva del panel: el
+sitio público solo necesita leer el precio final ya calculado (por `obtener_tarifa_vigente()`
+y el `monto_esperado` congelado en servidor), no la entidad cruda; por eso **no** se registra
+en `../_shared/data-model.md`.
 
 Las demás entidades que este módulo opera están definidas completamente en
 [`../_shared/data-model.md`](../_shared/data-model.md).
@@ -188,6 +262,10 @@ Las demás entidades que este módulo opera están definidas completamente en
 - **SC-005**: El administrador puede revisar el detalle completo (datos del responsable,
   lista de participantes y comprobante) de una inscripción y tomar una decisión en menos de
   2 minutos por inscripción.
+- **SC-006**: El 100% de los descuentos muestran el estado correcto (Programado/Activo/
+  Vencido) según la fecha actual, sin intervención manual del administrador.
+- **SC-007**: El administrador puede crear un descuento (configurar nombre, fechas,
+  porcentaje y tarifa aplicable) en menos de 2 minutos desde la pantalla de Tarifas.
 
 ---
 
@@ -197,8 +275,9 @@ Las demás entidades que este módulo opera están definidas completamente en
 - Eliminación de inscripciones.
 - Notificaciones push, SMS o cualquier canal distinto al correo electrónico.
 - Reportes, estadísticas, gráficas o exportación de datos de inscripciones.
-- Gestión de tarifas desde el panel administrativo (crear, editar, desactivar tarifas) —
-  las tarifas se administran directamente en la base de datos.
+- Gestión de la tarifa base (crear, editar o desactivar el monto de una categoría de tarifa)
+  — se administra directamente en la base de datos. La gestión de **Descuentos** sobre tarifas
+  existentes **SÍ** está en el alcance de este módulo (ver Historia de Usuario 5).
 
 ---
 
