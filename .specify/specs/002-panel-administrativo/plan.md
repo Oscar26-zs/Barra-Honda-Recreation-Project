@@ -59,10 +59,11 @@ Login + modales/bottom sheets auxiliares.
 | VIII. Tarifas con promoción por tiempo limitado | PASS | Tabla `tarifas` maneja vigencia. `obtener_tarifa_vigente()` RPC ya definida. Descuentos son overlay sobre tarifas existentes, no reemplazo. |
 | IX. Modelo grupal + consulta pública | PASS | Dos tablas (`inscripciones` + `participantes`). RPC SECURITY DEFINER para consulta pública. |
 
-**Decisión pendiente (fuera de este plan)**: valores exactos de `modalidad` — se requiere
-antes de la implementación de la tabla `tarifas` en el spec hermano 001. Este plan crea la
-estructura de `tarifas` pero los valores de `modalidad` se dejan como `[PENDIENTE DE
-DECISIÓN]` en la migración.
+**Decisión resuelta (2026-09-02)**: los valores de `modalidad` son `Promocional` y
+`Regular` (ver `spec.md` → "Modalidades de tarifa (valores fijos)" y
+`../_shared/data-model.md`). La migración `002_schema_completo.sql` aplica
+`CHECK (modalidad IN ('Promocional','Regular'))`. En esta versión existe una única fila
+`tarifas.activa = true` a la vez.
 
 ## Project Structure
 
@@ -71,10 +72,12 @@ DECISIÓN]` en la migración.
 ```text
 specs/002-panel-administrativo/
 ├── plan.md                 # Este archivo
-├── research.md             # Phase 0: decisiones técnicas y known gaps
-├── data-model.md           # Phase 1: esquema completo de BD
-├── quickstart.md           # Phase 1: guía de validación
-├── contracts/              # Phase 1: contratos de UI (mapeo spec→componentes)
+├── research.md             # Phase 0: decisiones técnicas y known gaps (existe)
+├── quickstart.md           # Phase 1: guía de validación manual (existe)
+├── data-model.md           # NO se genera como archivo aparte — el esquema vive en este
+│                           #   plan.md (sección "Phase 1 → data-model.md") + ../_shared/data-model.md
+├── contracts/              # NO se genera como carpeta aparte — el mapeo spec→componente
+│                           #   vive en este plan.md (sección "contracts/")
 ├── tasks.md                # Phase 2 (generado por /speckit-tasks)
 ├── spec.md                 # Feature specification (ya existe)
 ├── design/design-system.md # Tokens de diseño (ya existe)
@@ -136,8 +139,9 @@ admin/
 │   │   ├── FiltrosInscripciones.tsx    # NUEVO: chips de filtro desktop + bottom sheet mobile
 │   │   │                               # (4 opciones radio, botón "Aplicar")
 │   │   ├── BuscadorInscripciones.tsx   # NUEVO: input de búsqueda (compartido desktop/mobile)
-│   │   └── ExportarExcel.tsx           # NUEVO: botón "Exportar a Excel" — POR DEFINIR estilo
-│   │                                   # (sólido vs. tint; ver Known Gaps)
+│   │   └── ExportarExcel.tsx           # NUEVO: botón "Exportar a Excel" (FR-032) — exporta
+│   │                                   # la lista visible (filtro + búsqueda) a CSV/Excel.
+│   │                                   # Estilo POR DEFINIR (sólido vs. tint; Known Gap #1)
 │   │
 │   ├── tarifas/                        # MÓDULO: Historia 5 (FR-027 a FR-031)
 │   │   ├── TarifaCard.tsx              # NUEVO: tarjeta "Tarifa vigente" con monto
@@ -178,9 +182,16 @@ admin/
 supabase/
 ├── migrations/
 │   ├── 001_inscripciones.sql           # Ya existe (INSUFICIENTE — ver nota abajo)
-│   ├── 002_schema_completo.sql         # NUEVO: migración que completa el esquema alineado
-│   │                                   # con constitution.md (inscripciones ampliada,
-│   │                                   # participantes, tarifas, descuentos + RLS + RPCs).
+│   ├── 002_schema_completo.sql         # NUEVO: completa el esquema alineado con
+│   │                                   # constitution.md. Renombra las columnas de 001
+│   │                                   # (nombre_completo→nombre_contacto, telefono→
+│   │                                   # telefono_contacto, correo_electronico→correo_contacto,
+│   │                                   # comprobante_path→url_comprobante, created_at→
+│   │                                   # fecha_creacion) y amplía inscripciones (folio,
+│   │                                   # modalidad_tarifa, cantidad_personas, monto_esperado,
+│   │                                   # motivo_rechazo). Crea participantes y tarifas
+│   │                                   # (modalidad CHECK 'Promocional'/'Regular', una fila
+│   │                                   # activa) + RLS + RPCs.
 │   │                                   #
 │   │                                   # PROPIEDAD: esta migración es la ÚNICA fuente de
 │   │                                   # verdad para las tablas inscripciones, participantes
@@ -189,7 +200,10 @@ supabase/
 │   │                                   # ya creadas. Ver también la sección "Propiedad de las
 │   │                                   # migraciones" en ../_shared/data-model.md.
 │   └── 003_descuentos.sql              # NUEVO: tabla descuentos (exclusiva panel admin)
-│                                       # + función SQL calcular_estado_descuento()
+│                                       # + vista descuentos_estado (estado calculado; NO
+│                                       # generated column: now() no es IMMUTABLE)
+│                                       # + trigger plpgsql BEFORE INSERT/UPDATE anti-
+│                                       # solapamiento de fechas (FR-031).
 │                                       # RLS: solo rol autenticado (admin) tiene
 │                                       # SELECT/INSERT/UPDATE/DELETE. Sin políticas para
 │                                       # el rol anon — el sitio público no lee esta tabla;
@@ -231,18 +245,21 @@ organización elegida. `pages/Login.tsx` se reubica en `auth/Login.tsx` por la m
 
 **1. Cálculo automático de estado de descuento (FR-030)**
 
-Decisión: **Columna generated en Postgres** (`estado_descuento` calculado como
-`CASE WHEN NOW() < fecha_inicio THEN 'Programado' WHEN NOW() BETWEEN fecha_inicio AND fecha_fin THEN 'Activo' ELSE 'Vencido' END`).
+Decisión: **vista `descuentos_estado`** en Postgres que expone `estado_descuento` calculado
+con `CASE` sobre `(now() AT TIME ZONE 'America/Costa_Rica')::date` vs `fecha_inicio` /
+`fecha_fin` (ambas inclusivas): `< fecha_inicio → 'Programado'`, `> fecha_fin → 'Vencido'`,
+resto `→ 'Activo'`. Ver `research.md` §1 para el SQL.
 
-Rationale: El estado es una función pura de `fecha_inicio`, `fecha_fin` y la fecha actual.
-No depende de datos del usuario ni de lógica de negocio compleja. Una generated column:
-- garantiza consistencia (nunca se "desincroniza" con las fechas)
-- funciona tanto para el panel como para cualquier consulta futura
-- evita lógica duplicada cliente/servidor
+Rationale: el estado es función pura de las fechas y la hora del servidor. Una vista
+garantiza consistencia y una única fuente de verdad en el servidor, y no duplica lógica
+cliente/servidor.
 
-Alternativa rechazada: calcular en el cliente con `new Date()` — violaría el principio de
-que el servidor es la fuente de verdad, y sería inconsistente si dos clientes muestran la
-misma lista en momentos distintos del día.
+Alternativa rechazada — `GENERATED ALWAYS AS ... STORED`: Postgres exige que la expresión
+sea `IMMUTABLE`, y `now()` / `CURRENT_DATE` no lo son, por lo que esa definición no es
+válida.
+
+Alternativa rechazada — calcular en el cliente con `new Date()`: violaría que el servidor
+es la fuente de verdad.
 
 **2. Entidad Descuento: exclusiva del panel**
 
@@ -274,6 +291,28 @@ Duplicarla en dos componentes independientes violaría DRY. Separar la vista de 
 permite cumplir el diseño documentado en `panel-layout.md` (sidebar inline en desktop,
 bottom sheet en mobile) sin duplicación.
 
+**5. Precedencia de descuentos superpuestos (FR-031)**
+
+Decisión: **NO se permite superposición.** En esta versión hay una sola tarifa activa, así
+que todos los descuentos aplican sobre ella; no puede existir más de un descuento "Activo"
+o "Programado" con rangos de fecha superpuestos. Doble validación: (1) cliente
+(`FormularioDescuento.tsx` + `useDescuentos.ts`) para feedback inmediato, y (2) función
+`plpgsql` `BEFORE INSERT OR UPDATE` en `descuentos` que es la garantía real.
+
+Rationale: la doble capa cumple "el servidor es la fuente de verdad" (Principio II/VIII) sin
+depender solo de la UI, y sigue siendo simple (Principio V): un trigger corto, sin
+extensiones. Evita además la ambigüedad de "cuál gana" o "se suman los porcentajes".
+
+Alternativa descartada (constraint de exclusión con `btree_gist`): requiere la extensión
+`btree_gist` (no habilitada por defecto en Supabase). El trigger `plpgsql` logra lo mismo
+sin extensión.
+
+Alternativa descartada (solo validación en cliente): dejaría una ventana de carrera y
+ninguna defensa si se escribiera por fuera del formulario.
+
+Alternativa descartada (el más reciente gana / se suman): reglas de negocio adicionales sin
+necesidad real en este alcance.
+
 ### Known Gaps que afectan la implementación
 
 Los siguientes gaps de `design-system.md` quedan **señalados pero sin resolver** en este
@@ -303,26 +342,53 @@ Resend, y (e) Known Gaps abiertos.
 
 ## Phase 1: Design & Contracts
 
-*(Se generan como `data-model.md`, `contracts/` y `quickstart.md` — ver archivos
-independientes)*
+*(`quickstart.md` se genera como archivo independiente. El detalle de `data-model.md` y
+`contracts/` se mantiene embebido en las subsecciones siguientes de este plan, no como
+archivos separados — ver "Project Structure".)*
 
 ### data-model.md
 
 Contiene el esquema completo de PostgreSQL:
 - Tabla `inscripciones` (ampliada alineada con constitution.md: folio, modalidad_tarifa,
-  cantidad_personas, monto_esperado, url_comprobante, estado, nombre_contacto,
-  telefono_contacto, correo_contacto, fecha_creacion)
+  cantidad_personas, monto_esperado, url_comprobante, estado, `motivo_rechazo text NULL`,
+  nombre_contacto, telefono_contacto, correo_contacto, fecha_creacion). La migración
+  **renombra** las columnas equivalentes de `001` (ver comentario de `002_schema_completo.sql`).
 - Tabla `participantes` (inscripcion_id, cedula, nombre, apellidos, talla_camisa)
-- Tabla `tarifas` (modalidad [PENDIENTE DE DECISIÓN], monto_por_persona, fecha_inicio,
-  fecha_fin, activa)
-- Tabla `descuentos` (nombre, fecha_inicio, fecha_fin, porcentaje, aplica_a FK NULLABLE
-  → tarifas.id — NULL significa "aplica a todas las tarifas", estado_descuento GENERATED
-  ALWAYS AS)
-- RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, solo lectura) — cuando se considere
-  integrar el efecto de descuentos en el precio público, la consulta debe incluir
-  `WHERE (d.aplica_a IS NULL OR d.aplica_a = t.id)` para contemplar el caso NULL = todas
-- RPC `calcular_estado_descuento()` o generated column
-- RLS policies para cada tabla (incluyendo descuentos: solo rol autenticado)
+- Tabla `tarifas` (`modalidad CHECK (modalidad IN ('Promocional','Regular'))`,
+  monto_por_persona, fecha_inicio, fecha_fin, activa — **una única fila `activa = true`** en
+  esta versión)
+- Tabla `descuentos` (nombre, fecha_inicio, fecha_fin, porcentaje, `aplica_a` FK NULLABLE
+  → tarifas.id — reservado para múltiples tarifas; **SIEMPRE NULL en esta versión**). El
+  estado Programado/Activo/Vencido NO se almacena: se expone por la vista `descuentos_estado`
+  (ver research.md §1). Trigger `plpgsql` BEFORE INSERT/UPDATE que rechaza el solapamiento de
+  fechas con otro descuento no "Vencido" (FR-031).
+- RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, solo lectura) — **requisito
+  obligatorio (FR-031)**. Devuelve la única fila `tarifas.activa` vigente por fecha, con
+  `LEFT JOIN` a la vista `descuentos_estado` donde `estado_descuento = 'Activo'` (en esta
+  versión `aplica_a` es siempre `NULL`). DEBE devolver `modalidad`, `monto_por_persona`,
+  `monto_final_con_descuento` y `fecha_fin`.
+- **Contrato hacia 001-sitio-publico (cálculo de `monto_esperado`)**: el trigger/función
+  de INSERT que calcula `monto_esperado` en `inscripciones` (FR-022 del spec hermano)
+  pertenece al módulo 001 y no se implementa aquí. Sin embargo, ese cálculo DEBE usar el
+  **precio final con descuento** expuesto por `obtener_tarifa_vigente()`
+  (`monto_final_con_descuento`), no solo `monto_por_persona`. Este módulo es responsable
+  de que `obtener_tarifa_vigente()` exponga ambos valores; el módulo 001 es responsable
+  de consumir `monto_final_con_descuento` en su trigger de INSERT.
+- Vista `descuentos_estado` para el estado calculado (NO generated column: `now()` no es
+  IMMUTABLE — ver research.md §1)
+- **RLS (Campo 3)**: la tabla `tarifas`, igual que `descuentos`, NO permite SELECT
+  directo al rol `anon` — el sitio público solo lee el precio vigente vía
+  `obtener_tarifa_vigente()` (RPC SECURITY DEFINER). El rol `authenticated` (admin) sí
+  tiene SELECT directo sobre `tarifas` para mostrar la "Tarifa vigente" en el panel.
+- **RLS descuentos**: solo rol autenticado (admin) tiene SELECT/INSERT/UPDATE/DELETE.
+  Sin políticas para el rol `anon` — nunca se lee `descuentos` directamente.
+- **Precedencia de descuentos superpuestos (FR-031)**: NO se permite superposición. Como
+  hay una sola tarifa activa, todos los descuentos aplican sobre ella; no puede existir más
+  de un descuento "Activo" o "Programado" con rangos de fecha superpuestos. Doble
+  validación: cliente (`FormularioDescuento.tsx` + `useDescuentos.ts`) para feedback
+  inmediato + función `plpgsql` BEFORE INSERT/UPDATE en `descuentos` como garantía real. Se
+  descarta la constraint de exclusión con `btree_gist` (requeriría la extensión `btree_gist`,
+  no habilitada por defecto en Supabase); el trigger `plpgsql` logra lo mismo sin extensión.
 
 ### Design Token Mapping (Tailwind v4 + shadcn/ui)
 
@@ -372,7 +438,7 @@ la unificación en este plan porque el design system documenta ambos azules como
 |---|---|---|
 | `default` | Primario: fondo `--primary`, texto blanco, radio píldora | "Guardar descuento", "Aprobar", "Iniciar sesión" |
 | `secondary` | Secundario: fondo `--secondary`, texto `--primary`, radio píldora | "Filtros" (desktop), "Exportar" (por definir — ver Known Gap #1) |
-| `outline` | Outline: fondo transparente, borde visible, texto oscuro | "Rechazar", toggle "Aplica a" (no seleccionado) |
+| `outline` | Outline: fondo transparente, borde visible, texto oscuro | "Rechazar", chips de filtro no seleccionados |
 | `ghost` | Sin fondo/borde | Navegación sidebar, menú ⋮ |
 
 ### contracts/
@@ -397,25 +463,19 @@ Mapeo spec→componente para cada pantalla de `panel-layout.md`:
 | App Layout (sidebar + contenido) | layout/ | AppLayout.tsx | custom |
 
 **Componentes shadcn sin mapeo directo** (señalados en vez de forzar):
-- **Toggle "Aplica a"** (píldoras tipo chip que se seleccionan): no hay componente shadcn
-  equivalente. Se implementa como grupo de `Button` variant `outline`/`default` con
-  estado local, similar a los chips de filtro de inscripciones.
+- **Toggle "Aplica a"**: **no se implementa en esta versión** (una sola tarifa activa; el
+  descuento siempre aplica sobre ella). Reservado para una versión con múltiples tarifas;
+  cuando exista, sería un grupo de `Button` variant `outline`/`default` con estado local.
 - **Caja "VISTA PREVIA"** (precio tachado → precio con descuento en verde): es un componente
   custom (`VistaPreviaDescuento.tsx`) que no encaja en ningún shadcn existente. Se construye
   desde cero con tokens del design system.
 
 ### quickstart.md
 
-Guía de validación con escenarios verificables:
-1. Login con credenciales válidas → redirige a dashboard
-2. Login con credenciales incorrectas → muestra error
-3. Ver lista de inscripciones → muestra datos
-4. Filtrar por estado → muestra solo los del estado seleccionado
-5. Abrir detalle de inscripción → muestra datos + comprobante
-6. Aprobar inscripción pendiente → estado cambia + correo enviado
-7. Rechazar inscripción pendiente → estado cambia + correo enviado
-8. Crear descuento → aparece en lista con estado calculado
-9. Editar descuento → cambios reflejados
-10. Eliminar descuento → desaparece de lista
-11. Vista previa de descuento → precio se actualiza en tiempo real
-12. Responsive: mobile → bottom tab bar visible, perfil como bottom sheet
+Generado como archivo independiente: [`quickstart.md`](quickstart.md). Cubre
+autenticación, lista/filtros/búsqueda, detalle, aprobar/rechazar con **motivo obligatorio**
++ correo, fallo de correo (no revierte estado), descuentos (estados calculados,
+vista previa en vivo, no-superposición en cliente y en trigger de BD),
+`obtener_tarifa_vigente()` con la clave `anon`, exportación de la lista visible, responsive
+y verificación rápida de seguridad (RLS de `tarifas`/`descuentos`, aislamiento de
+`RESEND_API_KEY`, bucket privado).

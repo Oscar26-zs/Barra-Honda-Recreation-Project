@@ -124,10 +124,10 @@ inscripción y consulta de estado).
 **Sitio público — Precios / Tarifas** *(Página: Precios / Inscripción)*
 
 - **FR-021**: La página "Precios / Inscripción" DEBE mostrar la tarifa vigente de forma
-  informativa (modalidad [PENDIENTE DE DECISIÓN], monto por persona, fecha de fin de
-  vigencia) invocando la RPC `obtener_tarifa_vigente()` con la clave `anon`. Si no hay
-  tarifa activa, DEBE mostrar un aviso de que las tarifas no están disponibles en este
-  momento.
+  informativa (modalidad `Promocional` o `Regular` —ver `../_shared/data-model.md` →
+  "Valores de `modalidad`"—, monto por persona, fecha de fin de vigencia) invocando la RPC
+  `obtener_tarifa_vigente()` con la clave `anon`. Si no hay tarifa activa, DEBE mostrar un
+  aviso de que las tarifas no están disponibles en este momento.
 - **FR-022**: El campo `monto_esperado` de la inscripción DEBE calcularse y congelarse
   exclusivamente en el servidor (trigger o función PostgreSQL en el INSERT) como
   `monto_por_persona × cantidad_personas` de la tarifa vigente en el instante del INSERT,

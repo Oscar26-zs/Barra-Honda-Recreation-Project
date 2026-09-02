@@ -56,20 +56,22 @@ abajo dentro del área de contenido (el sidebar se mantiene):
    botón "Ampliar" (ícono de lupa) flotando en la esquina inferior derecha de la imagen.
 6. Acciones al final: botón primario "Aprobar" + botón outline "Rechazar", lado a lado.
 
-Al hacer click en "Rechazar" se espera un modal de confirmación con campo de motivo (definido
-en iteraciones previas de este proyecto, confirmar que esté implementado en el código fuente).
+Tanto "Aprobar" como "Rechazar" abren un modal de confirmación explícito (FR-015). El de
+"Rechazar" incluye un campo **obligatorio** de motivo, que se guarda en
+`inscripciones.motivo_rechazo` y se incluye en el correo de rechazo (FR-019a).
 
 ## Pantalla 4 — Tarifas
 
 1. Título "Tarifas" (h1) + subtítulo descriptivo ("Tarifas vigentes y descuentos configurados").
-2. Sección "TARIFA VIGENTE" (eyebrow) → una tarjeta por categoría de tarifa (ej. "Individual",
-   "Por persona") mostrando el monto en azul grande, alineado a la derecha de la tarjeta.
+2. Sección "TARIFA VIGENTE" (eyebrow) → **una sola tarjeta** (la tarifa activa: modalidad
+   `Promocional` o `Regular`) mostrando el monto por persona en azul grande, alineado a la
+   derecha de la tarjeta. (Esta versión maneja una única tarifa activa a la vez.)
 3. Sección "Descuentos": título + contador ("3 configurados") a la izquierda, botón primario
    "+ Nuevo descuento" a la derecha.
 4. Lista de descuentos, cada uno como una fila/tarjeta con:
    - Nombre del descuento + badge de estado (Programado/Activo/Vencido) en la misma línea.
-   - Debajo: rango de fechas, porcentaje (en azul, destacado), y a qué tarifa aplica (chip
-     gris: "Todas" o el nombre específico).
+   - Debajo: rango de fechas y porcentaje (en azul, destacado). Sin chip de "tarifa
+     aplicable" en esta versión (una sola tarifa activa).
    - Menú de tres puntos (⋮) a la derecha de cada fila para editar/eliminar.
 
 ### Modal "Nuevo descuento"
@@ -77,17 +79,17 @@ Modal centrado sobre overlay oscuro. Campos, en orden:
 1. Nombre del descuento (texto libre, placeholder "Ej. Descuento navideño").
 2. Fecha de inicio / Fecha de fin — dos inputs de fecha lado a lado.
 3. Porcentaje de descuento — input numérico con `%` fijo a la derecha.
-4. "Aplica a" — grupo de chips tipo toggle (Todas / Individual / [otras categorías]),
-   selección única, el activo relleno en azul.
+4. (En esta versión **NO** se muestra el selector "Aplica a": hay una sola tarifa activa y
+   el descuento siempre aplica sobre ella. Reservado para una versión con múltiples tarifas.)
 5. Footer del modal: botón "Cancelar" (outline) + botón primario "Guardar descuento" —
    este último aparece deshabilitado (azul pastel) hasta que el formulario esté completo.
 
 > **CONFIRMADO** (verificado en implementación mobile, 2026-09-01): la vista previa en
 > vivo SÍ está implementada. Aparece como una caja con eyebrow "VISTA PREVIA" que muestra
 > el nombre de la tarifa afectada, el precio original tachado en gris, una flecha `→`, y
-> el precio con descuento en verde bold. Se actualiza en tiempo real según el porcentaje y
-> la tarifa seleccionada en "Aplica a". Asumir comportamiento equivalente en desktop hasta
-> verificar el componente en código fuente.
+> el precio con descuento en verde bold. Se actualiza en tiempo real según el porcentaje
+> ingresado (sobre la única tarifa activa). Asumir comportamiento equivalente en desktop
+> hasta verificar el componente en código fuente.
 
 ## Mobile — confirmado por capturas de implementación (2026-09-01)
 
@@ -169,8 +171,8 @@ Estructura vertical de arriba hacia abajo:
 Mismo layout que desktop: tarjeta de "Tarifa vigente", luego sección "Descuentos" con el
 contador a la izquierda y el botón "+ Nuevo descuento" a la derecha **en la misma fila** — sí
 cabe en mobile sin apilarse. Cada descuento como tarjeta con nombre + badge de estado, debajo
-fechas + porcentaje en azul + chip de tarifa aplicable, y menú de tres puntos (⋮) arriba a
-la derecha de cada tarjeta.
+fechas + porcentaje en azul, y menú de tres puntos (⋮) arriba a la derecha de cada tarjeta.
+(Sin chip de "tarifa aplicable" en esta versión: una sola tarifa activa.)
 
 ### Formulario Nuevo / Editar Descuento (mobile)
 
@@ -185,7 +187,8 @@ respecto al modal desktop:
   formato crudo `dd/mm/aaaa` (ese formato solo aparece como placeholder de campo vacío).
 - **Vista previa en vivo**: caja con eyebrow "VISTA PREVIA" que muestra el nombre de la
   tarifa afectada, precio original tachado en gris, flecha `→`, y precio con descuento en
-  verde bold. Se actualiza en tiempo real según porcentaje y selección de "Aplica a".
+  verde bold. Se actualiza en tiempo real según el porcentaje ingresado (sobre la única
+  tarifa activa).
 - **Botón "Guardar descuento"**: fijo al fondo de la pantalla (**sticky**), a diferencia de
   los botones Aprobar/Rechazar del detalle de inscripción que no lo son. Estado deshabilitado:
   mismo azul con opacidad reducida (azul pastel), no gris — confirmado.
