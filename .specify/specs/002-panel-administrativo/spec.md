@@ -16,6 +16,34 @@
 
 ---
 
+## Referencia de diseño
+
+El sistema de diseño (colores, tipografía, componentes) y la estructura de cada pantalla
+de este módulo están documentados en:
+
+- [`design/design-system.md`](design/design-system.md)
+- [`design/panel-layout.md`](design/panel-layout.md)
+
+Cualquier componente nuevo que se implemente debe seguir los tokens definidos ahí. Si un
+requisito de este spec entra en conflicto con lo ya documentado en esos archivos, se debe
+señalar explícitamente antes de implementar, no asumir.
+
+> **Known Gaps pendientes de resolución antes de implementar las pantallas afectadas:**
+>
+> 1. **Botón "Exportar a Excel"** (`design-system.md` → Components → Botones): posible
+>    inconsistencia entre el estilo visual capturado (azul sólido, texto blanco) y el
+>    query de estilos computados (tint + texto azul). Señalar antes de implementar la
+>    barra de acciones de Inscripciones.
+> 2. **Color del estado "Programado"** en Tarifas (`design-system.md` → Colors → Semánticos
+>    de estado): usa `#4B80E8`, distinto al `--azul-barra` (`#0861CD`). Señalar antes de
+>    implementar los badges de descuentos.
+> 3. **Comportamiento mobile** (`panel-layout.md` → Mobile): no verificado por inspección
+>    de estilos computados — proviene de capturas de preview de Figma. Señalar antes de
+>    implementar cualquier componente con lógica responsive (bottom tab bar, bottom sheet
+>    de filtros, tarjetas de lista mobile).
+
+---
+
 ## Escenarios de Usuario y Pruebas *(obligatorio)*
 
 ### Historia de Usuario 3 — Revisión de Inscripciones por el Administrador (Prioridad: P3)
