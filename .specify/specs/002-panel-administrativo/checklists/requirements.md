@@ -29,14 +29,24 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 - [x] Entidad Administrador definida completamente (exclusiva de este módulo)
+- [x] Entidad Descuento definida completamente (exclusiva de este módulo, no se duplica en `_shared/data-model.md`)
 - [x] Entidades compartidas referenciadas (no duplicadas) via `../_shared/data-model.md`
-- [x] [PENDIENTE DE DECISIÓN] sobre valores de `modalidad` centralizado en data-model.md
+- [x] Valores de `modalidad` FIJADOS (`Promocional` / `Regular`) en `spec.md` y `_shared/data-model.md`
 
 ## Notes
 
 Spec derivado de la división del spec original `001-admin-inscripciones` (archivado en
-`_archive/`). Cubre HU3 (Revisión de Inscripciones, P3) e HU4 (Aprobación/Rechazo con
-Notificación, P4), con 11 requisitos funcionales (FR-010 a FR-020) y 2 criterios de éxito
-(SC-003, SC-005).
+`_archive/`). Cubre HU3 (Revisión de Inscripciones, P3), HU4 (Aprobación/Rechazo con
+Notificación, P4), HU5 (Gestión de Descuentos, P5) y HU6 (Registro Manual de Inscripción,
+P6), con 22 requisitos funcionales (FR-010 a FR-020, FR-027 a FR-037) más FR-019a, y 4
+criterios de éxito (SC-003, SC-005, SC-008, SC-009).
 
-Ready for `/speckit-plan`.
+Aclaraciones aplicadas 2026-09-02 (`/speckit-analyze` + decisiones del propietario):
+`modalidad` = `Promocional`/`Regular`; exportación de la lista a Excel/CSV EN alcance
+(FR-032); una única tarifa activa a la vez; motivo de rechazo obligatorio, persistido e
+incluido en el correo (FR-019a); estado de descuento vía vista `descuentos_estado` (no
+generated column); no-superposición reforzada con trigger en BD. Cambios adicionales
+2026-09-02: desactivación manual de descuentos (FR-033, campo `desactivado`) y registro
+manual de inscripción en el panel (HU6, FR-034 a FR-037).
+
+Ready for `/speckit-plan` / `/speckit-implement`.

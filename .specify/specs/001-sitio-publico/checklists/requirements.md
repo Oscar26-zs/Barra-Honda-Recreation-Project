@@ -29,7 +29,7 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 - [x] Shared data model referenced (not duplicated) via `../_shared/data-model.md`
-- [x] [PENDIENTE DE DECISIÓN] sobre valores de `modalidad` centralizado en data-model.md
+- [x] Valores de `modalidad` FIJADOS (`Promocional` / `Regular`) en `_shared/data-model.md`
 
 ## Notes
 

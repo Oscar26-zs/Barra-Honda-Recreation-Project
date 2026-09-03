@@ -124,15 +124,18 @@ inscripción y consulta de estado).
 **Sitio público — Precios / Tarifas** *(Página: Precios / Inscripción)*
 
 - **FR-021**: La página "Precios / Inscripción" DEBE mostrar la tarifa vigente de forma
-  informativa (modalidad [PENDIENTE DE DECISIÓN], monto por persona, fecha de fin de
-  vigencia) invocando la RPC `obtener_tarifa_vigente()` con la clave `anon`. Si no hay
-  tarifa activa, DEBE mostrar un aviso de que las tarifas no están disponibles en este
-  momento.
+  informativa (modalidad `Promocional` o `Regular` —ver `../_shared/data-model.md` →
+  "Valores de `modalidad`"—, monto por persona, fecha de fin de vigencia) invocando la RPC
+  `obtener_tarifa_vigente()` con la clave `anon`. Si no hay tarifa activa, DEBE mostrar un
+  aviso de que las tarifas no están disponibles en este momento.
 - **FR-022**: El campo `monto_esperado` de la inscripción DEBE calcularse y congelarse
   exclusivamente en el servidor (trigger o función PostgreSQL en el INSERT) como
-  `monto_por_persona × cantidad_personas` de la tarifa vigente en el instante del INSERT,
-  usando la zona horaria `America/Costa_Rica`. Ningún valor de monto enviado por el cliente
-  es aceptado para el cálculo real.
+  `monto_final_con_descuento × cantidad_personas`, donde `monto_final_con_descuento` es el
+  precio por persona ya con el descuento activo aplicado que expone
+  `obtener_tarifa_vigente()` para la tarifa vigente en el instante del INSERT (si no hay
+  descuento activo, equivale a `monto_por_persona`). Se usa la zona horaria
+  `America/Costa_Rica`. Ningún valor de monto enviado por el cliente es aceptado para el
+  cálculo real.
 - **FR-023**: Si al momento del INSERT no existe ninguna tarifa activa, la operación DEBE
   fallar con un error controlado y el formulario DEBE mostrar al usuario un mensaje
   indicando que no hay tarifa disponible, sin registrar ninguna fila parcial.
