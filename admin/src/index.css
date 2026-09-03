@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Marca ── */
+  --color-primary: #0861CD;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #EFF4FF;
+  --color-secondary-foreground: #0861CD;
+
+  /* ── Superficie ── */
+  --color-background: #ffffff;
+  --color-foreground: #12151C;
+  --color-muted: #F3F4F6;
+  --color-muted-foreground: #6B7080;
+  --color-border: #E5E7EB;
+  --color-input: #D1D5DB;
+  --color-ring: #0861CD;
+
+  /* ── Tarjetas / Popover ── */
+  --color-card: #ffffff;
+  --color-card-foreground: #12151C;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #12151C;
+
+  /* ── Acciones destructivas ── */
+  --color-destructive: #B3261E;
+  --color-destructive-foreground: #ffffff;
+
+  /* ── Accent ── */
+  --color-accent: #EFF4FF;
+  --color-accent-foreground: #0861CD;
+
+  /* ── App layout ── */
+  --color-fondo-app: #F9FAFB;
+
+  /* ── Estados inscripciones ── */
+  --color-status-pending-bg: #FEF3D7;
+  --color-status-pending-text: #B7791F;
+  --color-status-approved-bg: #DCF5E0;
+  --color-status-approved-text: #1C7A34;
+  --color-status-rejected-bg: #FDD9D9;
+  --color-status-rejected-text: #B3261E;
+
+  /* ── Estados descuentos ── */
+  --color-status-scheduled-bg: #EFF4FF;
+  --color-status-scheduled-text: #4B80E8;
+  --color-status-active-bg: #DCF5E0;
+  --color-status-active-text: #1C7A34;
+  --color-status-expired-bg: #F3F4F6;
+  --color-status-expired-text: #6B7080;
+
+  /* ── Tipografía ── */
+  --font-sans: 'Manrope', sans-serif;
+
+  /* ── Radio ── */
+  --radius: 0.75rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+  body {
+    background-color: var(--color-fondo-app);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  input, textarea, select {
+    outline: none;
+  }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}

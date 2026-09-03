@@ -1,49 +1,31 @@
-import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/supabase'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import DetalleInscripcion from './components/DetalleInscripcion'
+import AuthGuard from './auth/AuthGuard'
+import Login from './auth/Login'
+import AppLayout from './layout/AppLayout'
+import ListaInscripciones from './inscripciones/ListaInscripciones'
+import DetalleInscripcion from './inscripciones/DetalleInscripcion'
+import NuevaInscripcion from './inscripciones/NuevaInscripcion'
+import TarifasPage from './tarifas/TarifasPage'
 
 export default function App() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [cargando, setCargando] = useState(true)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setCargando(false)
-    })
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  if (cargando) return <p style={{ padding: '2rem' }}>Cargando...</p>
-
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<Login />} />
         <Route
-          path="/login"
-          element={!session ? <Login /> : <Navigate to="/dashboard" replace />}
-        />
-        <Route
-          path="/dashboard"
-          element={session ? <Dashboard /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/inscripcion/:id"
-          element={session ? <DetalleInscripcion /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="*"
-          element={<Navigate to={session ? '/dashboard' : '/login'} replace />}
-        />
+          element={
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
+          }
+        >
+          <Route index element={<Navigate to="/inscripciones" replace />} />
+          <Route path="/inscripciones" element={<ListaInscripciones />} />
+          <Route path="/inscripciones/nueva" element={<NuevaInscripcion />} />
+          <Route path="/inscripciones/:id" element={<DetalleInscripcion />} />
+          <Route path="/tarifas" element={<TarifasPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/inscripciones" replace />} />
       </Routes>
     </BrowserRouter>
   )
