@@ -139,14 +139,20 @@ admin/
 │   │   ├── FiltrosInscripciones.tsx    # NUEVO: chips de filtro desktop + bottom sheet mobile
 │   │   │                               # (4 opciones radio, botón "Aplicar")
 │   │   ├── BuscadorInscripciones.tsx   # NUEVO: input de búsqueda (compartido desktop/mobile)
-│   │   └── ExportarExcel.tsx           # NUEVO: botón "Exportar a Excel" (FR-032) — exporta
-│   │                                   # la lista visible (filtro + búsqueda) a CSV/Excel.
-│   │                                   # Estilo POR DEFINIR (sólido vs. tint; Known Gap #1)
+│   │   ├── ExportarExcel.tsx           # NUEVO: botón "Exportar a Excel" (FR-032) — exporta
+│   │   │                               # la lista visible (filtro + búsqueda) a CSV/Excel.
+│   │   │                               # Estilo POR DEFINIR (sólido vs. tint; Known Gap #1)
+│   │   └── NuevaInscripcion.tsx        # NUEVO: formulario de registro manual (HU6) —
+│   │                                   # reutiliza estructura de datos de responsable +
+│   │                                   # participantes del sitio público pero SIN comprobante
+│   │                                   # obligatorio (FR-035); botón de acceso "Registrar
+│   │                                   # inscripción" en ListaInscripciones.tsx
 │   │
 │   ├── tarifas/                        # MÓDULO: Historia 5 (FR-027 a FR-031)
 │   │   ├── TarifaCard.tsx              # NUEVO: tarjeta "Tarifa vigente" con monto
 │   │   ├── ListaDescuentos.tsx         # NUEVO: lista de descuentos con badges de estado,
-│   │   │                               # menú ⋮ (editar/eliminar)
+│   │   │                               # menú ⋮ (editar/eliminar + "Desactivar" cuando
+│   │   │                               # estado_descuento es 'Programado'/'Activo' — FR-033)
 │   │   ├── FormularioDescuento.tsx     # NUEVO: formulario crear/editar descuento
 │   │   │                               # (campos compartidos desktop/mobile)
 │   │   ├── FormularioDescuentoDesktop.tsx  # NUEVO: wrapper modal (Dialog) para desktop
@@ -164,7 +170,9 @@ admin/
 │   ├── hooks/                          # Hooks compartidos entre módulos
 │   │   ├── useAuth.ts                  # NUEVO: hook para sesión actual, signOut, loading
 │   │   ├── useInscripciones.ts         # NUEVO: hook para CRUD de inscripciones (fetch, filter,
-│   │   │                               # approve, reject)
+│   │   │                               # approve, reject) + `crearInscripcionManual(datos)` para
+│   │   │                               # el INSERT atómico (inscripción + participantes) vía
+│   │   │                               # cliente autenticado (HU6, FR-034 a FR-037)
 │   │   ├── useDescuentos.ts            # NUEVO: hook para CRUD de descuentos (fetch, create,
 │   │   │                               # update, delete)
 │   │   └── useBreakpoint.ts            # NUEVO: hook responsive para desktop vs mobile
@@ -246,9 +254,11 @@ organización elegida. `pages/Login.tsx` se reubica en `auth/Login.tsx` por la m
 **1. Cálculo automático de estado de descuento (FR-030)**
 
 Decisión: **vista `descuentos_estado`** en Postgres que expone `estado_descuento` calculado
-con `CASE` sobre `(now() AT TIME ZONE 'America/Costa_Rica')::date` vs `fecha_inicio` /
+con `CASE` que **prioriza el campo `desactivado`** (si `true` → "Vencido") sobre la
+comparación de `(now() AT TIME ZONE 'America/Costa_Rica')::date` vs `fecha_inicio` /
 `fecha_fin` (ambas inclusivas): `< fecha_inicio → 'Programado'`, `> fecha_fin → 'Vencido'`,
-resto `→ 'Activo'`. Ver `research.md` §1 para el SQL.
+resto `→ 'Activo'`. Ver `research.md` §1 para el SQL completo (incluye el CASE con
+`desactivado`, FR-033).
 
 Rationale: el estado es función pura de las fechas y la hora del servidor. Una vista
 garantiza consistencia y una única fuente de verdad en el servidor, y no duplica lógica
@@ -313,6 +323,19 @@ ninguna defensa si se escribiera por fuera del formulario.
 Alternativa descartada (el más reciente gana / se suman): reglas de negocio adicionales sin
 necesidad real en este alcance.
 
+**8. Registro manual de inscripción (HU6) reutiliza el cálculo de servidor**
+
+Decisión: el registro manual (HU6) reutiliza el **mismo trigger de cálculo de servidor**
+(folio, `modalidad_tarifa`, `monto_esperado`) que el INSERT público — no se duplica lógica de
+negocio entre `/sitio` y `/admin`. La única diferencia es que el INSERT lo hace el rol
+`authenticated` en vez de `anon`, y el comprobante es opcional.
+
+Rationale: Principio V (simplicidad/no duplicación) — el cálculo vinculante de
+`monto_esperado` ocurre en el trigger de INSERT de `inscripciones` (módulo 001), que usa
+`obtener_tarifa_vigente()`. El panel solo dispara el mismo INSERT; no recalcula ni ingresa
+montos manualmente (FR-036). No requiere cambios de RLS: `admin_acceso_total` (rol
+`authenticated`) ya cubre INSERT sobre `inscripciones` y `participantes` (FR-034 a FR-037).
+
 ### Known Gaps que afectan la implementación
 
 Los siguientes gaps de `design-system.md` quedan **señalados pero sin resolver** en este
@@ -330,6 +353,12 @@ plan. El desarrollador DEBE consultar al propietario antes de implementar la pie
 3. **Estados hover/focus** de botones y chips: no documentados. Se implementa el patrón más
    simple (`opacity` en hover, `box-shadow` sutil en focus-visible) y se señala para
    revisión.
+
+4. **Pantalla "Registrar inscripción" (HU6)**: no existe referencia visual en
+   `design-system.md` ni `panel-layout.md` para esta pantalla. Se implementa reutilizando los
+   mismos componentes shadcn ya establecidos (Input, Button, Card) en el mismo estilo del
+   resto del panel; señalar al propietario para validación visual antes de considerarlo
+   definitivo.
 
 ## Phase 0: Research
 
@@ -358,10 +387,11 @@ Contiene el esquema completo de PostgreSQL:
   monto_por_persona, fecha_inicio, fecha_fin, activa — **una única fila `activa = true`** en
   esta versión)
 - Tabla `descuentos` (nombre, fecha_inicio, fecha_fin, porcentaje, `aplica_a` FK NULLABLE
-  → tarifas.id — reservado para múltiples tarifas; **SIEMPRE NULL en esta versión**). El
+  → tarifas.id — reservado para múltiples tarifas; **SIEMPRE NULL en esta versión**,
+  `desactivado boolean NOT NULL DEFAULT false` — ver FR-033). El
   estado Programado/Activo/Vencido NO se almacena: se expone por la vista `descuentos_estado`
   (ver research.md §1). Trigger `plpgsql` BEFORE INSERT/UPDATE que rechaza el solapamiento de
-  fechas con otro descuento no "Vencido" (FR-031).
+  fechas con otro descuento no "Vencido" — **excluyendo** los `desactivado = true` (FR-031, FR-033).
 - RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, solo lectura) — **requisito
   obligatorio (FR-031)**. Devuelve la única fila `tarifas.activa` vigente por fecha, con
   `LEFT JOIN` a la vista `descuentos_estado` donde `estado_descuento = 'Activo'` (en esta
@@ -457,6 +487,7 @@ Mapeo spec→componente para cada pantalla de `panel-layout.md`:
 | Nuevo/Editar Descuento (desktop) | tarifas/ | FormularioDescuentoDesktop.tsx | Dialog, Input, Button |
 | Nuevo/Editar Descuento (mobile) | tarifas/ | FormularioDescuentoMobile.tsx | Input, Button (sticky) |
 | Vista Previa Precio | tarifas/ | VistaPreviaDescuento.tsx | Card (custom) |
+| Registrar inscripción (HU6) | inscripciones/ | NuevaInscripcion.tsx | Input, Button, Card |
 | Perfil (desktop) | perfil/ | PerfilSidebar.tsx | Avatar, Button |
 | Perfil (mobile) | perfil/ | PerfilBottomSheet.tsx | Sheet, Avatar, Button |
 | Bottom Tab Bar | layout/ | BottomTabBar.tsx | custom (Lucide icons) |
@@ -475,7 +506,8 @@ Mapeo spec→componente para cada pantalla de `panel-layout.md`:
 Generado como archivo independiente: [`quickstart.md`](quickstart.md). Cubre
 autenticación, lista/filtros/búsqueda, detalle, aprobar/rechazar con **motivo obligatorio**
 + correo, fallo de correo (no revierte estado), descuentos (estados calculados,
-vista previa en vivo, no-superposición en cliente y en trigger de BD),
+vista previa en vivo, no-superposición en cliente y en trigger de BD, **desactivación manual —
+FR-033**), registro manual de inscripción (**HU6**, FR-034 a FR-037),
 `obtener_tarifa_vigente()` con la clave `anon`, exportación de la lista visible, responsive
 y verificación rápida de seguridad (RLS de `tarifas`/`descuentos`, aislamiento de
 `RESEND_API_KEY`, bucket privado).

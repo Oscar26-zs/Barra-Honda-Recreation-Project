@@ -53,7 +53,7 @@ Guía de validación de extremo a extremo. No hay pruebas automatizadas en este 
 15. Simular fallo de Resend (clave inválida) y cambiar de estado → el estado se guarda
     igual; la UI muestra un aviso no bloqueante; el error queda en el log de la función.
 
-### Gestión de descuentos — HU5 (FR-027 a FR-031)
+### Gestión de descuentos — HU5 (FR-027 a FR-031, FR-033)
 
 16. Pantalla de Tarifas → una sola tarjeta "Tarifa vigente" con la modalidad activa y el
     monto por persona.
@@ -65,19 +65,38 @@ Guía de validación de extremo a extremo. No hay pruebas automatizadas en este 
     original tachado → precio con descuento en verde.
 21. Editar un descuento → los cambios se reflejan de inmediato en la lista.
 22. Eliminar un descuento → desaparece de la lista.
-23. Intentar crear/editar un descuento con fechas que se superponen con otro "Activo" o
+23. Con un descuento "Activo", usar "Desactivar" → el badge cambia a "Vencido" de inmediato y
+    `obtener_tarifa_vigente()` deja de aplicar su descuento. Crear un nuevo descuento con
+    fechas que se hubieran superpuesto con el desactivado → ya NO se rechaza.
+24. Intentar crear/editar un descuento con fechas que se superponen con otro "Activo" o
     "Programado" → se rechaza con un mensaje de error claro (validación de cliente).
-24. Intentar la misma superposición saltándose la UI (insert directo) → el trigger de BD
+25. Intentar la misma superposición saltándose la UI (insert directo) → el trigger de BD
     rechaza la escritura.
-25. Con un descuento "Activo", llamar a `obtener_tarifa_vigente()` con la clave `anon` →
+26. Con un descuento "Activo", llamar a `obtener_tarifa_vigente()` con la clave `anon` →
     devuelve `modalidad`, `monto_por_persona`, `monto_final_con_descuento` y `fecha_fin`;
     `monto_final_con_descuento` refleja el descuento.
 
+### Registro manual de inscripción — HU6 (FR-034 a FR-037)
+
+27. Desde la lista de Inscripciones, pulsar "Registrar inscripción" → se abre el formulario con
+    los mismos campos que el formulario público (responsable + participantes) pero sin
+    comprobante obligatorio.
+28. Registrar una inscripción **sin comprobante** (responsable + al menos un participante) →
+    aparece en la lista con `url_comprobante` vacío y estado "pendiente"; folio asignado,
+    `modalidad_tarifa` y `monto_esperado` calculados por el servidor.
+29. Registrar una inscripción **con comprobante adjunto** → la imagen se comprime y sube igual
+    que en el flujo público, y queda asociada a la inscripción.
+30. Intentar registrar sin que exista ninguna tarifa activa → la operación falla con un error
+    controlado y no se registra ninguna fila parcial.
+31. Abrir el detalle de una inscripción registrada manualmente → sigue exactamente el mismo
+    flujo de aprobar/rechazar (con motivo) + notificación por correo que cualquier otra, sin
+    distinción visual salvo que el comprobante puede estar vacío.
+
 ### Responsive
 
-26. En viewport mobile → sin sidebar; bottom tab bar (Inscripciones / Tarifas / Perfil);
+32. En viewport mobile → sin sidebar; bottom tab bar (Inscripciones / Tarifas / Perfil);
     la lista se muestra como tarjetas apiladas; "Perfil" abre un bottom sheet (no ruta).
-27. Formulario de descuento en mobile → pantalla completa, botón "Guardar descuento"
+33. Formulario de descuento en mobile → pantalla completa, botón "Guardar descuento"
     sticky al fondo; en el detalle de inscripción, "Aprobar"/"Rechazar" NO son sticky.
 
 ## Seguridad (verificación rápida)

@@ -13,13 +13,13 @@ explícitamente. La validación se hace vía `quickstart.md` (escenarios manuale
 `pnpm build` en cada hito (equivale al `npm run build` de la constitución: control de
 calidad antes de integrar).
 
-**Organization**: Tasks are grouped by user story (HU3, HU4, HU5) to enable independent
+**Organization**: Tasks are grouped by user story (HU3, HU4, HU5, HU6) to enable independent
 implementation and testing.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (HU3, HU4, HU5)
+- **[Story]**: Which user story this task belongs to (HU3, HU4, HU5, HU6)
 - Include exact file paths in descriptions
 
 ## Path Conventions
@@ -76,12 +76,15 @@ tarifas/, perfil/, layout/, hooks/, components/ui/). Las migraciones viven en
       las migraciones")
 - [ ] T011 [P] Crear `supabase/migrations/003_descuentos.sql` — tabla `descuentos` (nombre,
       fecha_inicio, fecha_fin, porcentaje, `aplica_a` FK NULLABLE → tarifas.id, reservado y
-      **SIEMPRE NULL en esta versión**). Crear vista `descuentos_estado` que expone
-      `estado_descuento` calculado con `CASE` sobre `(now() AT TIME ZONE 'America/Costa_Rica')::date`
-      vs fecha_inicio/fecha_fin inclusivas (**NO** usar `GENERATED ALWAYS AS`: `now()` no es
-      IMMUTABLE). Crear función + trigger `plpgsql` BEFORE INSERT/UPDATE que rechaza el
-      solapamiento de fechas con otro descuento no "Vencido" (FR-031). RLS: solo rol
-      authenticated (SELECT/INSERT/UPDATE/DELETE) sobre `descuentos` y `descuentos_estado`,
+      **SIEMPRE NULL en esta versión**, `desactivado boolean NOT NULL DEFAULT false` — FR-033).
+      Crear vista `descuentos_estado` que expone `estado_descuento` calculado con `CASE` que
+      **prioriza `desactivado`** (si `true` → 'Vencido') sobre la comparación de
+      `(now() AT TIME ZONE 'America/Costa_Rica')::date` vs fecha_inicio/fecha_fin inclusivas
+      (**NO** usar `GENERATED ALWAYS AS`: `now()` no es IMMUTABLE). Crear función + trigger
+      `plpgsql` BEFORE INSERT/UPDATE que rechaza el solapamiento de fechas con otro descuento
+      no "Vencido" (FR-031), **EXCLUYENDO** de la comparación los descuentos con
+      `desactivado = true` (FR-033). RLS: solo rol authenticated
+      (SELECT/INSERT/UPDATE/DELETE) sobre `descuentos` y `descuentos_estado`,
       sin políticas para rol anon
 - [ ] T012 [P] Implementar generación de folio (`BH-2026-####`) en la migración de esquema
       (trigger en INSERT de `inscripciones`)
@@ -196,14 +199,17 @@ indica), editarlo, eliminarlo; verificar validación de no-superposición.
 - [ ] T031 [P] [HU5] Crear hook `useDescuentos` en `admin/src/hooks/useDescuentos.ts` (fetch
       desde la vista `descuentos_estado`, create, update, delete) + validación en cliente de
       no-superposición (bloquea crear/editar si ya existe otro descuento "Activo" o
-      "Programado" con fechas superpuestas). La garantía definitiva es el trigger de BD (T011);
-      el cliente sólo adelanta el error
+      "Programado" con fechas superpuestas). Agregar `desactivarDescuento(id)` →
+      `UPDATE descuentos SET desactivado = true WHERE id = ...` (FR-033). La garantía
+      definitiva es el trigger de BD (T011); el cliente sólo adelanta el error
 - [ ] T032 [P] [HU5] Crear `admin/src/tarifas/TarifaCard.tsx` — tarjeta "Tarifa vigente" con monto
       en azul (shadcn Card)
 - [ ] T033 [P] [HU5] Crear `admin/src/tarifas/ListaDescuentos.tsx` — lista de descuentos
       (fuente: vista `descuentos_estado`) con badge de estado calculado, rango de fechas,
-      porcentaje y menú ⋮ (editar/eliminar) (Card + Badge + DropdownMenu). Sin chip de
-      "tarifa aplicable" en esta versión (una sola tarifa)
+      porcentaje y menú ⋮ (editar/eliminar/**Desactivar**) (Card + Badge + DropdownMenu). El
+      ítem "Desactivar" solo es visible cuando `estado_descuento` es 'Programado' o 'Activo'
+      (FR-033), con modal de confirmación de acción irreversible (mismo patrón que rechazar
+      inscripción). Sin chip de "tarifa aplicable" en esta versión (una sola tarifa)
 - [ ] T034 [HU5] Crear `admin/src/tarifas/FormularioDescuento.tsx` — formulario con nombre,
       fecha inicio/fin y porcentaje (input con `%`). En esta versión **NO** hay selector
       "Aplica a" (una sola tarifa activa; el descuento siempre aplica sobre ella). Vista
@@ -228,7 +234,36 @@ vista previa en vivo.
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 6: User Story HU6 — Registro Manual de Inscripción (Priority: P6)
+
+**Goal**: El administrador registra manualmente una inscripción desde el panel cuando el pago
+fue verificado fuera del sistema, sin comprobante obligatorio. FR-034 a FR-037.
+
+**Independent Test**: Registro manual con datos de responsable + al menos un participante sin
+comprobante → aparece en la lista con `url_comprobante` vacío y estado "pendiente"; sigue el
+mismo flujo de aprobar/rechazar que las inscripciones públicas.
+
+### Implementación
+
+- [ ] T046 [HU6] Agregar `crearInscripcionManual` a `admin/src/hooks/useInscripciones.ts`
+      (INSERT atómico inscripción + participantes, sin comprobante obligatorio — `url_comprobante`
+      puede ser null —, reutiliza el cálculo de servidor: folio, `modalidad_tarifa`,
+      `monto_esperado` FR-034, FR-036)
+- [ ] T047 [HU6] Crear `admin/src/inscripciones/NuevaInscripcion.tsx` — formulario con datos de
+      responsable + participantes dinámicos (agregar/quitar), campo de comprobante OPCIONAL con
+      la misma compresión en cliente que el sitio público (browser-image-compression, Principio I),
+      validación de campos obligatorios excepto comprobante (FR-034, FR-035, FR-037)
+- [ ] T048 [HU6] Agregar botón "Registrar inscripción" en
+      `admin/src/inscripciones/ListaInscripciones.tsx` y ruta `/inscripciones/nueva` en `App.tsx`
+- [ ] T049 [HU6] Manejar el caso "no hay tarifa activa" (FR-023 del spec hermano) en el
+      formulario: mostrar error controlado, no permitir guardar fila parcial (FR-036)
+
+**Checkpoint**: HU6 funcional. El admin puede registrar manualmente inscripciones desde el
+panel con el mismo flujo de aprobación/rechazo que las públicas.
+
+---
+
+## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: Mejoras que afectan a múltiples historias.
 
@@ -242,7 +277,8 @@ vista previa en vivo.
       equivale al `npm run build` de la constitución) para garantizar que compila sin errores
 - [ ] T044 [P] Ejecutar la validación de `quickstart.md` — probar de extremo a extremo todos
       los escenarios listados (login, lista/filtros/búsqueda, detalle, aprobar/rechazar con
-      motivo + correo, descuentos con estado y no-superposición, exportación, responsive)
+      motivo + correo, descuentos con estado y no-superposición **y desactivación manual FR-033**,
+      registro manual de inscripción **HU6 FR-034 a FR-037**, exportación, responsive)
 - [ ] T045 Limpieza: eliminar `admin/src/pages/Dashboard.tsx` (lógica distribuida) y archivos
       viejos sin uso
 
@@ -255,8 +291,8 @@ vista previa en vivo.
 - **Setup (Phase 1)**: No dependencies — puede empezar de inmediato
 - **Foundational (Phase 2)**: Depende de Setup — **BLOQUEA todas las historias** (migraciones)
 - **User Stories (Phase 3+)**: Todas dependen de Phase 1 + 2
-  - Se pueden ejecutar en paralelo si hay capacidad, o en orden de prioridad (P3 → P4 → P5)
-- **Polish (Fase 6)**: Depende de que las historias deseadas estén completas
+  - Se pueden ejecutar en paralelo si hay capacidad, o en orden de prioridad (P3 → P4 → P5 → P6)
+- **Polish (Fase 7)**: Depende de que las historias deseadas estén completas
 
 ### User Story Dependencies
 
@@ -264,6 +300,9 @@ vista previa en vivo.
 - **HU4 (P4)**: Depende de HU3 (reutiliza DetalleInscripcion y la lista para el cambio de estado)
 - **HU5 (P5)**: Puede empezar tras Foundational (migraciones 002/003). Depende de la tabla
   `tarifas` (creada en Foundational). Independiente de HU3/HU4
+- **HU6 (P6)**: Puede empezar tras Foundational (Phase 2). Es independiente de HU3/HU4/HU5,
+  salvo que reutiliza `ListaInscripciones.tsx` (creada en HU3) como punto de entrada del
+  botón "Registrar inscripción"
 
 ### Within Each User Story
 
@@ -276,7 +315,8 @@ vista previa en vivo.
 - Todos los tasks del Setup marcados [P] son paralelos
 - Los tasks de migración (T010-T015) son paralelos (archivos `.sql` distintos)
 - T016-T020, T031, T032, T033, T038, T039 son paralelizables (archivos distintos)
-- HU3 y HU5 pueden desarrollarse en paralelo en equipos distintos (HU4 depende de HU3)
+- HU3, HU5 y HU6 pueden desarrollarse en paralelo en equipos distintos (HU4 depende de HU3;
+  HU6 depende de la lista de HU3 solo para el punto de entrada del botón)
 
 ---
 
@@ -307,7 +347,8 @@ Task: "Crear useInscripciones en admin/src/hooks/useInscripciones.ts"
 2. Add HU3 → Test independently → Deploy/Demo (MVP)
 3. Add HU4 → Test independently → Deploy/Demo
 4. Add HU5 → Test independently → Deploy/Demo
-5. Cada historia agrega valor sin romper las anteriores
+5. Add HU6 → Test independently → Deploy/Demo
+6. Cada historia agrega valor sin romper las anteriores
 
 ---
 
@@ -319,6 +360,8 @@ Task: "Crear useInscripciones en admin/src/hooks/useInscripciones.ts"
 - Regla de negocio clave: **NO se permite superposición de descuentos** (validación en cliente
   + trigger `plpgsql` en `descuentos` como garantía real). Una sola tarifa activa: los
   descuentos siempre aplican sobre ella (`aplica_a` reservado, siempre NULL)
+- **Desactivación manual (FR-033)**: el campo `desactivado` fuerza el estado a "Vencido" y
+  excluye al descuento de la validación de no-superposición; es irreversible en esta versión
 - El estado del descuento (Programado/Activo/Vencido) se lee de la vista `descuentos_estado`,
   NO de una generated column (`now()` no es IMMUTABLE)
 - `modalidad` de `tarifas`: valores fijos `Promocional` / `Regular` (spec.md)

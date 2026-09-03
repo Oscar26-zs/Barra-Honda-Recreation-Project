@@ -154,6 +154,53 @@ puede crear un segundo descuento con fechas superpuestas.
    (validado en el cliente y reforzado en el servidor).
 5. **Dado** que el administrador edita o elimina un descuento existente, **cuando**
    confirma la acción, **entonces** los cambios se reflejan inmediatamente en la lista.
+6. **Dado** que existe un descuento con estado "Activo" o "Programado", **cuando** el
+   administrador lo desactiva manualmente, **entonces** el descuento deja de aplicarse
+   de inmediato (equivalente a "Vencido" para efectos de `obtener_tarifa_vigente()`) y ya
+   no bloquea la creación de otros descuentos con fechas superpuestas.
+
+---
+
+### Historia de Usuario 6 — Registro Manual de Inscripción por el Administrador (Prioridad: P6)
+
+**Aplicación**: Panel administrativo (`/admin`)
+
+Cuando una persona contacta directamente a la recreativa (en persona, por teléfono o
+WhatsApp) para inscribirse, y el pago ya fue verificado por fuera del sistema, el
+administrador puede registrar la inscripción manualmente desde el panel sin necesidad de
+que la persona use el formulario público ni de adjuntar un comprobante de pago.
+
+**Por qué esta prioridad**: Cubre un caso de uso operativo real (inscripciones gestionadas
+fuera de línea) sin forzar al responsable a usar el sitio público ni al administrador a
+fabricar un comprobante que no existe en el sistema.
+
+**Prueba independiente**: El administrador registra una inscripción de prueba con datos de
+responsable y al menos un participante, sin adjuntar comprobante, y verifica que aparece en
+la lista de Inscripciones con estado "pendiente" y sigue el mismo flujo de
+aprobación/rechazo que las inscripciones públicas.
+
+**Escenarios de Aceptación**:
+
+1. **Dado** que el administrador está en la pantalla de Inscripciones, **cuando** selecciona
+   "Registrar inscripción", **entonces** ve un formulario con los mismos campos que el
+   formulario público (datos del responsable + participantes), sin campo obligatorio de
+   comprobante.
+2. **Dado** que el administrador completa los datos del responsable y de al menos un
+   participante sin adjuntar comprobante, **cuando** guarda, **entonces** la inscripción se
+   crea con `url_comprobante` en null, folio asignado, `modalidad_tarifa` y `monto_esperado`
+   calculados por el servidor con la misma lógica que el flujo público (tarifa vigente al
+   momento del registro), y estado inicial "pendiente".
+3. **Dado** que el administrador sí cuenta con una imagen del comprobante (ej. el responsable
+   se lo envió por WhatsApp), **cuando** la adjunta en este formulario, **entonces** el
+   sistema la comprime y sube igual que en el flujo público, y queda asociada a la inscripción.
+4. **Dado** que no existe ninguna tarifa activa al momento del registro manual, **cuando** el
+   administrador intenta guardar, **entonces** la operación falla con el mismo error
+   controlado que aplica al flujo público (FR-023 del spec hermano) y no se registra ninguna
+   fila parcial.
+5. **Dado** que se completa el registro manual, **cuando** el administrador la revisa después,
+   **entonces** sigue exactamente el mismo flujo de HU3/HU4 (ver detalle, aprobar/rechazar
+   con motivo, notificación por correo) sin ninguna distinción visual respecto a una
+   inscripción creada por el público, salvo que `url_comprobante` puede estar vacío.
 
 ---
 
@@ -255,6 +302,30 @@ validaciones del formulario del sitio público, en el campo congelado
   rechazarse con un error claro. La validación se realiza en el cliente (feedback inmediato)
   y se refuerza en el servidor (función/trigger en la tabla `descuentos`), que es la
   garantía definitiva.
+- **FR-033**: El administrador DEBE poder desactivar manualmente un descuento con estado
+  "Programado" o "Activo" en cualquier momento antes de su `fecha_fin`. Un descuento
+  desactivado manualmente se comporta como "Vencido": no se aplica en
+  `obtener_tarifa_vigente()` y no cuenta para la validación de no-superposición (FR-031) de
+  nuevos descuentos. La desactivación es irreversible en esta versión (no hay "reactivar"),
+  igual que las transiciones de estado de inscripciones (FR-016).
+
+**Panel administrativo — Registro manual de inscripción**
+
+- **FR-034**: El administrador autenticado DEBE poder registrar manualmente una nueva
+  inscripción desde el panel, capturando los mismos datos que el formulario público del
+  sitio: datos del responsable (nombre, teléfono, correo) y de cada participante (cédula,
+  nombre, apellidos, talla de camisa).
+- **FR-035**: A diferencia del flujo público (FR-004), en el registro manual el comprobante
+  de pago NO DEBE ser obligatorio. Si el administrador no adjunta ninguno, `url_comprobante`
+  queda en `null`. Si sí adjunta uno, DEBE pasar por la misma compresión en cliente que el
+  flujo público (Principio I de la constitución).
+- **FR-036**: El cálculo de `modalidad_tarifa` y `monto_esperado` de una inscripción
+  registrada manualmente DEBE usar exactamente la misma lógica de servidor (tarifa vigente al
+  momento del INSERT) que las inscripciones públicas. El administrador NO DEBE poder ingresar
+  un monto manual.
+- **FR-037**: Una inscripción registrada manualmente por el administrador DEBE iniciar en
+  estado "pendiente", igual que las públicas, y seguir el mismo flujo de aprobación/rechazo
+  definido en HU4, sin atajos de estado.
 
 ### Entidades Clave
 
@@ -266,9 +337,12 @@ participantes.
 **Descuento** (exclusiva de este módulo): Promoción temporal aplicada sobre la tarifa
 activa. Atributos: `nombre`, `fecha_inicio`, `fecha_fin`, `porcentaje`, `aplica_a`
 (reservado para una versión futura con múltiples tarifas; en esta versión siempre `null` =
-la única tarifa activa), y un estado **calculado** (Programado/Activo/Vencido) derivado
-automáticamente de la fecha actual en zona `America/Costa_Rica` — no se almacena
-manualmente (se expone mediante la vista `descuentos_estado`). Es exclusiva del panel: el sitio público solo necesita leer el
+la única tarifa activa), `desactivado` (booleano, `default false` — cuando es `true`, el
+descuento se trata como "Vencido" independientemente de las fechas; no se introduce un
+cuarto estado visual distinto, por simplicidad — Principio V), y un estado **calculado**
+(Programado/Activo/Vencido) derivado automáticamente de la fecha actual en zona
+`America/Costa_Rica` — no se almacena manualmente (se expone mediante la vista
+`descuentos_estado`). Es exclusiva del panel: el sitio público solo necesita leer el
 precio final ya calculado (por `obtener_tarifa_vigente()` y el `monto_esperado` congelado en
 servidor), no la entidad cruda; por eso **no** se registra en `../_shared/data-model.md`.
 
@@ -278,6 +352,11 @@ Las demás entidades que este módulo opera están definidas completamente en
 - El panel administrativo **LEE** y **MODIFICA el `estado` (y `motivo_rechazo`) de** `Inscripción` — ver definición completa en `../_shared/data-model.md`.
 - El panel administrativo **LEE** `Participante` — ver definición completa en `../_shared/data-model.md`.
 - El panel administrativo **LEE** `Comprobante de pago` — ver definición completa en `../_shared/data-model.md`.
+
+> **Nota sobre el registro manual (HU6):** además de las operaciones anteriores, el panel
+> administrativo también **CREA** filas de Inscripción (y Participante) directamente, para
+> el registro manual descrito en HU6 — ver `../_shared/data-model.md`, donde
+> `url_comprobante` es nullable precisamente para soportar este caso.
 
 ---
 
@@ -293,6 +372,8 @@ Las demás entidades que este módulo opera están definidas completamente en
 - **SC-008**: El administrador puede crear un descuento y ver su estado
   (Programado/Activo/Vencido) calculado correctamente según la fecha, sin necesidad de
   SQL manual.
+- **SC-009**: El administrador puede registrar manualmente una inscripción completa
+  (responsable + al menos un participante) sin comprobante en menos de 2 minutos.
 
 ---
 
@@ -306,6 +387,10 @@ Las demás entidades que este módulo opera están definidas completamente en
 - Gestión de la tarifa base (crear, editar o desactivar el monto de una categoría de tarifa)
   — se administra directamente en la base de datos. La gestión de **Descuentos** sobre tarifas
   existentes **SÍ** está en el alcance de este módulo (ver Historia de Usuario 5).
+- **Edición** de inscripciones existentes (modificar los datos de un responsable o
+  participantes ya registrados) sigue fuera de alcance. El registro manual (HU6) solo
+  **crea** inscripciones nuevas desde el panel; una vez creadas, únicamente se les puede
+  cambiar el estado (aprobar/rechazar), igual que a las públicas.
 
 ---
 

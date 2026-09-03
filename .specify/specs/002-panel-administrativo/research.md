@@ -16,6 +16,7 @@ eligió X" para el implementador.
 CREATE VIEW descuentos_estado AS
 SELECT d.*,
   CASE
+    WHEN d.desactivado THEN 'Vencido'
     WHEN (now() AT TIME ZONE 'America/Costa_Rica')::date < d.fecha_inicio THEN 'Programado'
     WHEN (now() AT TIME ZONE 'America/Costa_Rica')::date > d.fecha_fin   THEN 'Vencido'
     ELSE 'Activo'
@@ -25,7 +26,11 @@ FROM descuentos d;
 
 Regla de bordes: `fecha_inicio` y `fecha_fin` son **inclusivas** (el día `fecha_fin`
 todavía es "Activo"). La comparación usa la fecha del servidor en zona
-`America/Costa_Rica` (constitución, Principio VIII, regla 2).
+`America/Costa_Rica` (constitución, Principio VIII, regla 2). El campo `desactivado`
+(booleano, default `false`) se prioriza en el `CASE`: cuando es `true`, el estado se fuerza
+a "Vencido" de inmediato (FR-033), ignorando las fechas. Esto hace que un descuento
+desactivado manualmente deje de aplicarse en `obtener_tarifa_vigente()` y deje de contar
+para la validación de no-superposición (ver Decisión 5).
 
 **Por qué una vista y no `GENERATED ALWAYS AS ... STORED`**: una generated column exige que
 la expresión sea `IMMUTABLE`; `now()` / `CURRENT_DATE` no lo son, así que Postgres rechaza
@@ -73,7 +78,8 @@ activa, todos los descuentos aplican sobre ella; no puede existir más de un des
 1. **Cliente** (`FormularioDescuento.tsx` + `useDescuentos.ts`): feedback inmediato al
    crear/editar.
 2. **Servidor**: función `plpgsql` `BEFORE INSERT OR UPDATE` en `descuentos` que rechaza la
-   fila si se solapa (por fechas) con otro descuento no "Vencido". Es la garantía real.
+   fila si se solapa (por fechas) con otro descuento no "Vencido" — **excluyendo** de la
+   comparación los descuentos con `desactivado = true` (FR-033). Es la garantía real.
 
 **Rationale**: la doble capa cumple "el servidor es la fuente de verdad" (Principio II/VIII)
 sin depender solo de la UI, y sigue siendo simple (Principio V): un trigger corto, sin

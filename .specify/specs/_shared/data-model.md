@@ -53,7 +53,7 @@ Representa el envío colectivo de un grupo de participantes bajo un único compr
 | `modalidad_tarifa` | `Promocional` o `Regular` — valor congelado en el momento del INSERT (ver "Valores de `modalidad`") |
 | `cantidad_personas` | Número total de participantes en el grupo |
 | `monto_esperado` | Calculado y congelado en servidor (`monto_por_persona × cantidad_personas` de la tarifa vigente al INSERT) |
-| `url_comprobante` | URL del archivo de comprobante en Supabase Storage |
+| `url_comprobante` | URL del archivo de comprobante en Supabase Storage. **Nullable**: queda `null` cuando el pago fue verificado fuera del sistema y el registro se hace manualmente desde el panel sin comprobante (HU6) |
 | `estado` | `pendiente` / `aprobada` / `rechazada` |
 | `motivo_rechazo` | Texto ingresado por el admin al rechazar; `null` mientras esté `pendiente` o si es `aprobada`. Se incluye en el correo de rechazo. |
 | `nombre_contacto` | Nombre completo del responsable del grupo |
@@ -64,6 +64,7 @@ Representa el envío colectivo de un grupo de participantes bajo un único compr
 **Quién opera sobre esta entidad:**
 - Sitio público (`/sitio`): **CREA** filas nuevas vía INSERT atómico con estado inicial `pendiente`.
 - Panel administrativo (`/admin`): **LEE** todas las filas; **MODIFICA** el campo `estado` a `aprobada` o `rechazada` (transición definitiva, no reversible) y, al rechazar, `motivo_rechazo`.
+- Panel administrativo (`/admin`): también **CREA** filas nuevas directamente (registro manual por el administrador cuando el pago fue verificado fuera del sistema — ver `002-panel-administrativo/spec.md`, HU6), con las mismas reglas de cálculo de servidor que el sitio público (folio, `modalidad_tarifa`, `monto_esperado`), pero sin exigir comprobante (`url_comprobante` queda `null`).
 
 ---
 
@@ -82,6 +83,7 @@ Representa a cada persona individual inscrita dentro de un grupo.
 **Quién opera sobre esta entidad:**
 - Sitio público (`/sitio`): **CREA** filas nuevas en el mismo INSERT atómico que la Inscripción.
 - Panel administrativo (`/admin`): **LEE** la lista completa de participantes de cada inscripción al visualizar su detalle.
+- Panel administrativo (`/admin`): también **CREA** filas nuevas en el mismo INSERT atómico del registro manual de inscripción (HU6 — ver `002-panel-administrativo/spec.md`).
 
 ---
 
