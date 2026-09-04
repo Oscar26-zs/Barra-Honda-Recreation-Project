@@ -65,22 +65,30 @@ import Kicker from '../Kicker.astro'
 
 <script>
   const EVENT_DATE = new Date('2026-12-06T07:00:00-06:00')
-  const units: Record<string, HTMLElement | null> = {
-    days: document.querySelector('[data-unit="days"]'),
-    hours: document.querySelector('[data-unit="hours"]'),
-    minutes: document.querySelector('[data-unit="minutes"]'),
-    seconds: document.querySelector('[data-unit="seconds"]'),
-  }
-  function tick() {
-    const diff = Math.max(0, EVENT_DATE.getTime() - Date.now())
-    const set = (el: HTMLElement | null, n: number) => {
-      if (el) el.textContent = String(n).padStart(2, '0')
+  let heroTimer: ReturnType<typeof setInterval> | undefined
+
+  function initCountdown() {
+    const units: Record<string, HTMLElement | null> = {
+      days: document.querySelector('[data-unit="days"]'),
+      hours: document.querySelector('[data-unit="hours"]'),
+      minutes: document.querySelector('[data-unit="minutes"]'),
+      seconds: document.querySelector('[data-unit="seconds"]'),
     }
-    set(units.days, Math.floor(diff / 86400000))
-    set(units.hours, Math.floor((diff % 86400000) / 3600000))
-    set(units.minutes, Math.floor((diff % 3600000) / 60000))
-    set(units.seconds, Math.floor((diff % 60000) / 1000))
+    if (!units.days) return
+    function tick() {
+      const diff = Math.max(0, EVENT_DATE.getTime() - Date.now())
+      const set = (el: HTMLElement | null, n: number) => {
+        if (el) el.textContent = String(n).padStart(2, '0')
+      }
+      set(units.days, Math.floor(diff / 86400000))
+      set(units.hours, Math.floor((diff % 86400000) / 3600000))
+      set(units.minutes, Math.floor((diff % 3600000) / 60000))
+      set(units.seconds, Math.floor((diff % 60000) / 1000))
+    }
+    tick()
+    clearInterval(heroTimer)
+    heroTimer = setInterval(tick, 1000)
   }
-  tick()
-  setInterval(tick, 1000)
+
+  document.addEventListener('astro:page-load', initCountdown)
 </script>

@@ -55,6 +55,20 @@ const { title, index, thumb } = Astro.props
       const icon = trigger.querySelector('[data-acc-icon]') as HTMLElement | null
       if (!panel) return
       const isOpen = panel.classList.contains('grid-rows-[1fr]')
+
+      // Dentro de [data-accordion-exclusive] solo una fila puede estar abierta.
+      const group = trigger.closest('[data-accordion-exclusive]')
+      if (group && !isOpen) {
+        group.querySelectorAll('[data-acc-trigger][aria-expanded="true"]').forEach((t) => {
+          if (t === trigger) return
+          const p = t.nextElementSibling as HTMLElement | null
+          p?.classList.add('grid-rows-[0fr]')
+          p?.classList.remove('grid-rows-[1fr]')
+          t.setAttribute('aria-expanded', 'false')
+          t.querySelector('[data-acc-icon]')?.classList.remove('rotate-45')
+        })
+      }
+
       panel.classList.toggle('grid-rows-[1fr]', !isOpen)
       panel.classList.toggle('grid-rows-[0fr]', isOpen)
       icon?.classList.toggle('rotate-45', !isOpen)

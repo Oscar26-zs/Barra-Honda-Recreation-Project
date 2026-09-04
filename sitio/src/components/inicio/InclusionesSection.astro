@@ -9,25 +9,33 @@
 import Kicker from '../Kicker.astro'
 
 const items = [
-  { label: 'Jersey oficial del evento', icon: 'jersey' },
-  { label: 'Hidratación en ruta', icon: 'water' },
-  { label: 'Frutas y refrigerio', icon: 'gift' },
+  { label: 'Jersey oficial', icon: 'jersey', desc: 'Jersey técnico de la 5.ª edición, incluido con tu inscripción.' },
+  { label: 'Hidratación durante la ruta', icon: 'water' },
+  { label: 'Duchas al finalizar', icon: 'shower' },
+  { label: 'Asistencia médica', icon: 'medical' },
   { label: 'Asistencia mecánica', icon: 'wrench' },
-  { label: 'Atención de la Cruz Roja', icon: 'medical' },
-  { label: 'Vehículo escoba', icon: 'car' },
-  { label: 'Parqueo vigilado en la salida', icon: 'parking' },
-  { label: 'Actividades y música al llegar', icon: 'flag' },
+  { label: 'Carro escoba', icon: 'car' },
+  { label: 'Puestos de asistencia', icon: 'flag' },
+  { label: 'Fotografías oficiales', icon: 'camera' },
+  { label: 'Brazalete oficial', icon: 'band' },
+  { label: 'Rifas de patrocinadores', icon: 'gift' },
+  { label: 'Parqueo gratuito', icon: 'parking' },
+  { label: 'Número oficial de participante', icon: 'bib', desc: 'Tu dorsal oficial para identificarte en la ruta y en la meta.' },
 ]
 
 const iconPath: Record<string, string> = {
   jersey: 'M8 4l-4 4 2 2 2-2v10h8V8l2 2 2-2-4-4-2 2h-4z',
   water: 'M12 3s5 6 5 10a5 5 0 11-10 0c0-4 5-10 5-10z',
+  shower: 'M12 4h5v6 M6 13h12a6 6 0 00-12 0z M8 17v2 M12 17v2 M16 17v2',
   gift: 'M4 9h16v11H4z M4 9V7h16v2 M12 4v16 M9 4a2 2 0 010 4H4 M15 4a2 2 0 000 4h5',
   wrench: 'M14 6a4 4 0 01-5.3 5.3L4 16v4h4l4.7-4.7A4 4 0 0018 10l-2 2-3-3 2-2z',
   medical: 'M12 4v16 M4 12h16',
   car: 'M5 13l1.5-4h11L19 13 M5 13h14v5H5z M7 18v2 M17 18v2',
   parking: 'M6 4h6a4 4 0 010 8H6zm0 8v8',
   flag: 'M5 3v18 M5 4h11l-2 4 2 4H5',
+  camera: 'M3 8h4l2-2h6l2 2h4v11H3z M12 16a3 3 0 100-6 3 3 0 000 6z',
+  band: 'M12 5a7 7 0 100 14 7 7 0 000-14z M8 5h8 M8 19h8',
+  bib: 'M4 6h16v12H4z M8 10h8 M8 14h5',
 }
 ---
 
@@ -42,15 +50,17 @@ const iconPath: Record<string, string> = {
       Todo lo que necesitas
     </h2>
 
-    <!-- mobile / tablet: grid compacto -->
-    <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 lg:hidden">
+    <!-- mobile / tablet: grid 3-col, tarjetas iguales -->
+    <div class="mt-8 grid grid-cols-3 gap-3 lg:hidden">
       {
         items.map((it) => (
-          <div class="p-3 sm:p-4 bg-night/60 border border-river/15 flex flex-col gap-2">
-            <svg class="w-5 h-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath[it.icon] ?? ''} />
-            </svg>
-            <span class="text-xs text-pale/80 leading-snug">{it.label}</span>
+          <div class="p-3 sm:p-4 min-h-[7rem] sm:min-h-[8.5rem] bg-night/60 border border-river/15 flex flex-col items-center justify-center text-center gap-2.5">
+            <span class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-river/15 shrink-0">
+              <svg class="w-4 h-4 sm:w-5 sm:h-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath[it.icon] ?? ''} />
+              </svg>
+            </span>
+            <span class="text-[11px] sm:text-xs text-pale/80 leading-snug">{it.label}</span>
           </div>
         ))
       }
@@ -75,16 +85,27 @@ const iconPath: Record<string, string> = {
               >
                 {String(i + 1).padStart(2, '0')}
               </span>
-              <svg class={`text-sky ${isFeatured ? 'w-9 h-9' : 'w-6 h-6'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class={`shrink-0 text-sky ${isFeatured ? 'w-9 h-9' : 'w-6 h-6'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath[it.icon] ?? ''} />
               </svg>
-              <span class={`relative mt-3 font-semibold text-foam ${isFeatured ? 'text-lg' : 'text-sm'}`}>
-                {it.label}
-              </span>
+              <div class={isWide ? 'relative' : 'contents'}>
+                <span class={`relative block ${isWide ? '' : 'mt-3'} font-semibold text-foam ${isFeatured ? 'text-lg' : 'text-sm'}`}>
+                  {it.label}
+                </span>
+                {it.desc && (
+                  <span class="relative mt-1.5 block text-xs text-pale/60 leading-snug max-w-[30ch]">
+                    {it.desc}
+                  </span>
+                )}
+              </div>
             </div>
           )
         })
       }
     </div>
+
+    <p class="mt-8 text-xs text-pale/60">
+      <span class="text-sky">*</span> Inversión: <span class="font-semibold text-foam">₡18.000 por persona</span>. Incluye todo lo anterior sin costo adicional.
+    </p>
   </div>
 </section>
