@@ -34,7 +34,10 @@ Secciones modificadas:
     para reflejar que el único acceso público permitido es vía `obtener_tarifa_vigente()`,
     y que la tabla sigue sin tener SELECT directo ni política RLS pública.
 TODOs pendientes:
-  - Fijar los valores exactos de `modalidad` en `spec.md` antes de la implementación.
+  RESUELTO 2026-09-02: los valores de `modalidad` ya están fijados en
+  `spec.md` → "Modalidades de tarifa (valores fijos)" y en
+  `_shared/data-model.md` → "Valores de `modalidad`" como
+  `Promocional` / `Regular`. No quedan TODOs abiertos en esta enmienda.
 -->
 
 # Constitución — Recreativa Barra Honda

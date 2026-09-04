@@ -393,9 +393,14 @@ Contiene el esquema completo de PostgreSQL:
   (ver research.md §1). Trigger `plpgsql` BEFORE INSERT/UPDATE que rechaza el solapamiento de
   fechas con otro descuento no "Vencido" — **excluyendo** los `desactivado = true` (FR-031, FR-033).
 - RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, solo lectura) — **requisito
-  obligatorio (FR-031)**. Devuelve la única fila `tarifas.activa` vigente por fecha, con
-  `LEFT JOIN` a la vista `descuentos_estado` donde `estado_descuento = 'Activo'` (en esta
-  versión `aplica_a` es siempre `NULL`). DEBE devolver `modalidad`, `monto_por_persona`,
+  obligatorio (FR-031)**. Filtra la fila con `activa = true` (una sola en esta versión).
+  Las fechas de la tarifa (`fecha_inicio`/`fecha_fin`) determinan la modalidad vigente
+  (Promocional o Regular) pero **NO actúan como filtro de existencia**: la RPC devuelve la
+  tarifa siempre que `activa = true`, incluso cuando la fecha actual está fuera del período
+  Promocional (en ese caso la modalidad calculada es `Regular`). El único caso en que la
+  RPC devuelve vacío es cuando no existe ninguna fila con `activa = true`. `LEFT JOIN` a la
+  vista `descuentos_estado` donde `estado_descuento = 'Activo'` (en esta versión `aplica_a`
+  es siempre `NULL`). DEBE devolver `modalidad`, `monto_por_persona`,
   `monto_final_con_descuento` y `fecha_fin`.
 - **Contrato hacia 001-sitio-publico (cálculo de `monto_esperado`)**: el trigger/función
   de INSERT que calcula `monto_esperado` en `inscripciones` (FR-022 del spec hermano)
