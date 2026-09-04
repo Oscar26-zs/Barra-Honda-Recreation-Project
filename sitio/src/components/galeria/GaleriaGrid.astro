@@ -1,17 +1,24 @@
 ---
 /*
- * Galería — grid masonry con fotos reales del evento (Cloudinary) + lightbox.
- * Sin agrupar por edición: todas las fotos mezcladas en un solo set.
+ * Galería — grid masonry con fotos y videos reales del evento (Cloudinary) + lightbox.
+ * Sin agrupar por edición: todo el contenido mezclado en un solo set.
  * Las URLs ya vienen con f_auto,q_auto (mejor formato + calidad automática sin
  * pérdida visible) — ver GaleriaGrid.astro → src().
  */
 import Kicker from '../Kicker.astro'
 
-const CLOUD_TX = 'f_auto,q_auto'
+const IMG_TX = 'f_auto,q_auto'
 /** URL de grid (liviana) a partir de la URL cruda de Cloudinary. */
-const src = (url: string, w = 700) => url.replace('/upload/', `/upload/${CLOUD_TX},w_${w}/`)
+const src = (url: string, w = 700) => url.replace('/upload/', `/upload/${IMG_TX},w_${w}/`)
 /** URL de mayor resolución para el lightbox. */
-const srcFull = (url: string) => url.replace('/upload/', `/upload/${CLOUD_TX},w_1600/`)
+const srcFull = (url: string) => url.replace('/upload/', `/upload/${IMG_TX},w_1600/`)
+/** Miniatura (primer frame) de un video de Cloudinary, como imagen jpg. */
+const srcPoster = (videoUrl: string, w = 700) =>
+  videoUrl.replace('/upload/', `/upload/so_0,${IMG_TX},w_${w}/`).replace(/\.[a-z0-9]+$/i, '.jpg')
+/** URL de video optimizada (calidad automática). */
+const srcVideo = (url: string) => url.replace('/upload/', '/upload/q_auto/')
+
+type Item = { type: 'foto'; url: string } | { type: 'video'; url: string }
 
 const fotos: string[] = [
   'https://res.cloudinary.com/lra0grpe/image/upload/v1788535790/f432b494-351f-4d00-b12a-7464ff0d0e6c.png',
@@ -37,6 +44,18 @@ const fotos: string[] = [
   'https://res.cloudinary.com/lra0grpe/image/upload/v1788535706/edc77784-82b9-448f-98ef-467db7fb5c49.png',
   'https://res.cloudinary.com/lra0grpe/image/upload/v1788535700/8ccf7225-8a36-49f8-9e51-540569c14c58.png',
 ]
+
+const videos: string[] = [
+  'https://res.cloudinary.com/lra0grpe/video/upload/v1788539654/WhatsApp_Video_2026-09-04_at_8.56.34_AM.mp4',
+  'https://res.cloudinary.com/lra0grpe/video/upload/v1788539800/WhatsApp_Video_2026-09-04_at_8.58.51_AM_1.mp4',
+  'https://res.cloudinary.com/lra0grpe/video/upload/v1788539854/WhatsApp_Video_2026-09-04_at_8.58.51_AM_2.mp4',
+  'https://res.cloudinary.com/lra0grpe/video/upload/v1788539881/WhatsApp_Video_2026-09-04_at_8.58.52_AM.mp4',
+]
+
+const items: Item[] = [
+  ...fotos.map((url): Item => ({ type: 'foto', url })),
+  ...videos.map((url): Item => ({ type: 'video', url })),
+]
 ---
 
 <div class="mt-8">
@@ -45,22 +64,37 @@ const fotos: string[] = [
 
 <div class="mt-6 columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3" id="gallery-grid">
   {
-    fotos.map((url, i) => (
-      <div class="relative break-inside-avoid cursor-pointer group overflow-hidden bg-cloud">
-        <img
-          src={src(url)}
-          data-full={srcFull(url)}
-          alt={`MTB El Valle del Nacaome — foto ${i + 1}`}
-          class="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-          loading="lazy"
-        />
-      </div>
-    ))
+    items.map((it, i) =>
+      it.type === 'video' ? (
+        <div class="relative break-inside-avoid cursor-pointer group overflow-hidden bg-cloud" data-video={srcVideo(it.url)}>
+          <img
+            src={srcPoster(it.url)}
+            alt={`MTB El Valle del Nacaome — video ${i + 1}`}
+            class="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+          <span class="absolute inset-0 flex items-center justify-center">
+            <span class="w-12 h-12 rounded-full bg-night/60 border border-foam/40 flex items-center justify-center text-foam">▶</span>
+          </span>
+        </div>
+      ) : (
+        <div class="relative break-inside-avoid cursor-pointer group overflow-hidden bg-cloud">
+          <img
+            src={src(it.url)}
+            data-full={srcFull(it.url)}
+            alt={`MTB El Valle del Nacaome — foto ${i + 1}`}
+            class="w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        </div>
+      ),
+    )
   }
 </div>
 
 <div id="lightbox" class="fixed inset-0 z-50 bg-night/95 hidden items-center justify-center p-6">
   <img id="lightbox-img" alt="" class="w-full max-h-[80vh] object-contain max-w-4xl" />
+  <video id="lightbox-video" class="hidden w-full max-h-[80vh] max-w-4xl" controls playsinline />
 </div>
 
 <script>
@@ -68,19 +102,43 @@ const fotos: string[] = [
   function initGaleria() {
     const lightbox = document.getElementById('lightbox')
     const lightboxImg = document.getElementById('lightbox-img') as HTMLImageElement | null
+    const lightboxVideo = document.getElementById('lightbox-video') as HTMLVideoElement | null
+
+    const cerrar = () => {
+      if (!lightbox) return
+      lightbox.classList.add('hidden')
+      lightbox.classList.remove('flex')
+      lightboxVideo?.pause()
+      if (lightboxVideo) lightboxVideo.removeAttribute('src')
+    }
 
     document.querySelectorAll<HTMLElement>('#gallery-grid > *').forEach((tile) => {
       tile.addEventListener('click', () => {
-        const img = tile.querySelector('img') as HTMLImageElement | null
-        if (!img || !lightbox || !lightboxImg) return
-        lightboxImg.src = img.dataset.full || img.src
+        if (!lightbox || !lightboxImg || !lightboxVideo) return
+        const videoSrc = tile.dataset.video
+        if (videoSrc) {
+          lightboxImg.classList.add('hidden')
+          lightboxVideo.classList.remove('hidden')
+          lightboxVideo.src = videoSrc
+          lightboxVideo.play()
+        } else {
+          const img = tile.querySelector('img') as HTMLImageElement | null
+          if (!img) return
+          lightboxVideo.classList.add('hidden')
+          lightboxVideo.pause()
+          lightboxVideo.removeAttribute('src')
+          lightboxImg.classList.remove('hidden')
+          lightboxImg.src = img.dataset.full || img.src
+        }
         lightbox.classList.remove('hidden')
         lightbox.classList.add('flex')
       })
     })
-    lightbox?.addEventListener('click', () => {
-      lightbox.classList.add('hidden')
-      lightbox.classList.remove('flex')
+
+    lightbox?.addEventListener('click', (e) => {
+      // No cerrar si el click fue dentro de los controles del <video>.
+      if (e.target === lightboxVideo) return
+      cerrar()
     })
   }
 
