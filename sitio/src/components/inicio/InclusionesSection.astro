@@ -1,0 +1,90 @@
+---
+/*
+ * Home §4 — "Tu inscripción incluye". Fondo inclusion-feature.jpg + doble overlay.
+ * Grid compacto en mobile, bento grid 4-col en desktop (1.ª celda featured col-span-2
+ * row-span-2, última isWide col-span-2).
+ * Fuente: desing/docs/05 (bento grid) · 06 · 08 (imagen + set de íconos)
+ * Copy: autoría propia (Known Gap #5).
+ */
+import Kicker from '../Kicker.astro'
+
+const items = [
+  { label: 'Jersey oficial del evento', icon: 'jersey' },
+  { label: 'Hidratación en ruta', icon: 'water' },
+  { label: 'Frutas y refrigerio', icon: 'gift' },
+  { label: 'Asistencia mecánica', icon: 'wrench' },
+  { label: 'Atención de la Cruz Roja', icon: 'medical' },
+  { label: 'Vehículo escoba', icon: 'car' },
+  { label: 'Parqueo vigilado en la salida', icon: 'parking' },
+  { label: 'Actividades y música al llegar', icon: 'flag' },
+]
+
+const iconPath: Record<string, string> = {
+  jersey: 'M8 4l-4 4 2 2 2-2v10h8V8l2 2 2-2-4-4-2 2h-4z',
+  water: 'M12 3s5 6 5 10a5 5 0 11-10 0c0-4 5-10 5-10z',
+  gift: 'M4 9h16v11H4z M4 9V7h16v2 M12 4v16 M9 4a2 2 0 010 4H4 M15 4a2 2 0 000 4h5',
+  wrench: 'M14 6a4 4 0 01-5.3 5.3L4 16v4h4l4.7-4.7A4 4 0 0018 10l-2 2-3-3 2-2z',
+  medical: 'M12 4v16 M4 12h16',
+  car: 'M5 13l1.5-4h11L19 13 M5 13h14v5H5z M7 18v2 M17 18v2',
+  parking: 'M6 4h6a4 4 0 010 8H6zm0 8v8',
+  flag: 'M5 3v18 M5 4h11l-2 4 2 4H5',
+}
+---
+
+<section class="relative overflow-hidden py-16 sm:py-20 md:py-24 bg-abyss">
+  <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('/assets/inclusion-feature.jpg')"></div>
+  <div class="absolute inset-0 bg-river/15"></div>
+  <div class="absolute inset-0 bg-night/88"></div>
+
+  <div class="relative max-w-6xl mx-auto px-6">
+    <Kicker tone="white" class="mb-4">Tu inscripción incluye</Kicker>
+    <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl md:text-6xl text-foam">
+      Todo lo que necesitas
+    </h2>
+
+    <!-- mobile / tablet: grid compacto -->
+    <div class="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3 lg:hidden">
+      {
+        items.map((it) => (
+          <div class="p-3 sm:p-4 bg-night/60 border border-river/15 flex flex-col gap-2">
+            <svg class="w-5 h-5 text-sky" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath[it.icon] ?? ''} />
+            </svg>
+            <span class="text-xs text-pale/80 leading-snug">{it.label}</span>
+          </div>
+        ))
+      }
+    </div>
+
+    <!-- desktop: bento grid -->
+    <div class="mt-8 hidden lg:grid grid-cols-4 auto-rows-[136px] gap-4">
+      {
+        items.map((it, i) => {
+          const isFeatured = i === 0
+          const isWide = i === items.length - 1
+          const sizeClass = isFeatured
+            ? 'col-span-2 row-span-2 p-7 flex flex-col justify-center'
+            : isWide
+              ? 'col-span-2 p-6 flex items-center gap-5'
+              : 'p-5 flex flex-col justify-center'
+          return (
+            <div class={`group relative overflow-hidden bg-night/60 hover:bg-night/80 border border-river/15 hover:border-river/50 transition-all duration-300 hover:-translate-y-1 ${sizeClass}`}>
+              <span
+                class={`absolute -right-1 -top-3 font-poster font-black text-river/10 group-hover:text-river/25 leading-none transition-colors duration-300 select-none ${isFeatured ? 'text-8xl' : 'text-5xl'}`}
+                aria-hidden="true"
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <svg class={`text-sky ${isFeatured ? 'w-9 h-9' : 'w-6 h-6'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={iconPath[it.icon] ?? ''} />
+              </svg>
+              <span class={`relative mt-3 font-semibold text-foam ${isFeatured ? 'text-lg' : 'text-sm'}`}>
+                {it.label}
+              </span>
+            </div>
+          )
+        })
+      }
+    </div>
+  </div>
+</section>

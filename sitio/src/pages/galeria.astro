@@ -1,0 +1,23 @@
+---
+/*
+ * Galería (FR-001). Contenido estático — grid con filtros + lightbox por <script>.
+ * Fuente: desing/docs/06-pages-sections.md → "src/pages/galeria.astro"
+ */
+import Base from '../layouts/Base.astro'
+import GaleriaGrid from '../components/galeria/GaleriaGrid.astro'
+---
+
+<Base title="Galería" active="galeria">
+  <section class="relative overflow-hidden bg-paper py-16 sm:py-20 md:py-24">
+    <div class="max-w-7xl mx-auto px-6">
+      <h1 class="font-poster font-black uppercase leading-none text-6xl md:text-8xl text-ink">
+        Galería
+      </h1>
+      <p class="mt-4 text-sm text-slate leading-relaxed max-w-2xl">
+        Momentos de las ediciones anteriores del MTB El Valle del Nacaome. Filtra por tipo
+        de contenido o por edición.
+      </p>
+      <GaleriaGrid />
+    </div>
+  </section>
+</Base>

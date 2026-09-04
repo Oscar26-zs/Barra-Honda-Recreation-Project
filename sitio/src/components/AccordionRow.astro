@@ -1,0 +1,64 @@
+---
+/*
+ * AccordionRow — patrón grid-rows-[1fr]/[0fr] (expande sin height:auto abrupto).
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/05-components.md y 07-interactivity.md
+ * El contenido permanece montado; el toggle lo maneja un <script> compartido en la página
+ * que use el componente (o el bloque inline de más abajo, activo si hay filas en la página).
+ */
+interface Props {
+  title: string
+  index?: string
+  thumb?: string
+}
+const { title, index, thumb } = Astro.props
+---
+
+<div class="border-b border-river/15" data-accordion-row>
+  <button
+    type="button"
+    aria-expanded="false"
+    class="w-full text-left py-4 flex items-center justify-between gap-3"
+    data-acc-trigger
+  >
+    <span class="flex items-center gap-3 sm:gap-4 min-w-0">
+      {thumb && <img src={thumb} alt="" class="w-14 h-14 object-cover shrink-0" loading="lazy" />}
+      {index && <span class="font-poster font-black text-xs text-river/60 shrink-0">{index}</span>}
+      <span class="text-sm font-semibold text-ink truncate">{title}</span>
+    </span>
+    <svg
+      class="w-4 h-4 text-slate shrink-0 transition-transform"
+      data-acc-icon
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16M4 12h16" />
+    </svg>
+  </button>
+  <div class="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out" data-acc-panel>
+    <div class="overflow-hidden">
+      <div class="pb-5 pr-6 sm:pr-10 text-sm text-slate leading-relaxed">
+        <slot />
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Se registra una sola vez por documento aunque haya varios AccordionRow.
+  if (!(window as unknown as { __accInit?: boolean }).__accInit) {
+    ;(window as unknown as { __accInit?: boolean }).__accInit = true
+    document.addEventListener('click', (e) => {
+      const trigger = (e.target as HTMLElement).closest('[data-acc-trigger]')
+      if (!trigger) return
+      const panel = trigger.nextElementSibling as HTMLElement | null
+      const icon = trigger.querySelector('[data-acc-icon]') as HTMLElement | null
+      if (!panel) return
+      const isOpen = panel.classList.contains('grid-rows-[1fr]')
+      panel.classList.toggle('grid-rows-[1fr]', !isOpen)
+      panel.classList.toggle('grid-rows-[0fr]', isOpen)
+      icon?.classList.toggle('rotate-45', !isOpen)
+      trigger.setAttribute('aria-expanded', String(!isOpen))
+    })
+  }
+</script>

@@ -1,0 +1,16 @@
+---
+/*
+ * Kicker / eyebrow — texto pequeño sobre cada heading de sección. Patrón fijo.
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/03-typography.md
+ */
+interface Props {
+  tone?: 'blue' | 'white'
+  class?: string
+}
+const { tone = 'blue', class: className = '' } = Astro.props
+const color = tone === 'white' ? 'text-sky' : 'text-river'
+---
+
+<p class={`text-xs font-semibold tracking-[0.25em] uppercase ${color} ${className}`}>
+  <slot />
+</p>

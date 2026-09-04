@@ -1,0 +1,32 @@
+---
+/*
+ * Button — CTA poster-style reutilizable.
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/05-components.md
+ */
+interface Props {
+  href?: string
+  type?: 'button' | 'submit'
+  variant?: 'primary' | 'ghost'
+  class?: string
+}
+const { href, type = 'button', variant = 'primary', class: className = '' } = Astro.props
+
+const base = 'font-poster font-bold uppercase transition-colors inline-block text-center'
+const variants = {
+  primary: 'bg-river hover:bg-sky text-white',
+  ghost: 'text-slate hover:text-ink',
+}
+const cls = `${base} ${variants[variant]} ${className}`
+---
+
+{
+  href ? (
+    <a href={href} class={cls}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={cls}>
+      <slot />
+    </button>
+  )
+}

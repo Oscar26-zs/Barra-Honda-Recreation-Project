@@ -1,0 +1,100 @@
+---
+/*
+ * Home §7 — "Mapa y perfil de la ruta". Carrusel de 3 rutas embebidas de Komoot (iframe),
+ * una visible a la vez, con flechas prev/next y dots.
+ * Fuente: desing/docs/07-interactivity.md → "Carrusel de rutas Komoot" (URLs reales) · 08
+ */
+import Kicker from '../Kicker.astro'
+---
+
+<section class="relative overflow-hidden py-16 sm:py-20 md:py-24 bg-paper">
+  <div class="relative max-w-6xl mx-auto px-6">
+    <Kicker class="mb-4">Recorrido</Kicker>
+    <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl md:text-6xl text-ink">
+      Mapa y perfil de la ruta
+    </h2>
+
+    <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-0 lg:gap-0">
+      <div class="lg:col-span-2">
+        <div class="border-x border-t border-river/20 bg-cloud aspect-video relative overflow-hidden">
+          <iframe id="komoot-frame" src="" title="" loading="lazy" class="absolute inset-0 w-full h-full" style="border:0"></iframe>
+          <button type="button" id="route-prev" aria-label="Ruta anterior" class="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-paper/90 hover:bg-paper border border-river/30 hover:border-river/60 transition-colors">‹</button>
+          <button type="button" id="route-next" aria-label="Siguiente ruta" class="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-paper/90 hover:bg-paper border border-river/30 hover:border-river/60 transition-colors">›</button>
+          <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10" id="route-dots"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 border border-river/20 bg-cloud p-4 lg:p-5 flex flex-col justify-center gap-3">
+        <p class="font-poster font-black text-xl uppercase leading-none text-ink" data-route-name></p>
+        <p class="text-sm"><span class="font-semibold text-ink">Distancia:</span> <span class="text-slate" data-route-km></span></p>
+        <p class="text-sm"><span class="font-semibold text-ink">Terreno:</span> <span class="text-slate" data-route-terrain></span></p>
+        <p class="text-sm"><span class="font-semibold text-ink">Nivel:</span> <span class="text-slate" data-route-level></span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const ROUTES = [
+    {
+      name: 'Mirador Nacaome — Parque Nacional',
+      km: '6.98 km',
+      terrain: 'Caminos pavimentados y sendero de acceso a las cuevas',
+      level: 'Moderado — buena condición física, senderos accesibles',
+      komootUrl: 'https://www.komoot.com/smarttour/20108244/embed?layout=map&profile=1',
+    },
+    {
+      name: 'Circuito de las Cuevas — Parque Nacional',
+      km: '3.61 km',
+      terrain: 'Sendero accesible dentro del Parque Nacional Barra Honda',
+      level: 'Fácil — apto para todo nivel',
+      komootUrl: 'https://www.komoot.com/smarttour/34323352/embed?layout=map&profile=1',
+    },
+    {
+      name: 'Las Cavernas — Sendero La Flor',
+      km: '1.80 km',
+      terrain: 'Sendero corto y accesible cerca de las cuevas',
+      level: 'Fácil — apto para todo nivel',
+      komootUrl:
+        'https://www.komoot.com/tour/3252919856/embed?share_token=af6zUG06ZnlQQ9oJg7Up4TTl5ilQbYL6NkRfffEexqDMS9C469&layout=map&profile=1',
+    },
+  ]
+  let idx = 0
+  const frame = document.getElementById('komoot-frame') as HTMLIFrameElement | null
+  const dotsWrap = document.getElementById('route-dots')
+
+  function render() {
+    const r = ROUTES[idx]
+    if (frame) {
+      frame.src = r.komootUrl
+      frame.title = r.name
+    }
+    document.querySelectorAll('[data-route-name]').forEach((el) => (el.textContent = r.name))
+    document.querySelectorAll('[data-route-km]').forEach((el) => (el.textContent = r.km))
+    document.querySelectorAll('[data-route-terrain]').forEach((el) => (el.textContent = r.terrain))
+    document.querySelectorAll('[data-route-level]').forEach((el) => (el.textContent = r.level))
+    dotsWrap?.querySelectorAll('button').forEach((b, i) => b.classList.toggle('bg-river', i === idx))
+  }
+
+  if (dotsWrap) {
+    dotsWrap.innerHTML = ROUTES.map(
+      (_, i) =>
+        `<button type="button" class="w-1.5 h-1.5 rounded-full transition-colors ${i === 0 ? 'bg-river' : 'bg-river/25 hover:bg-river/50'}" data-dot="${i}" aria-label="Ruta ${i + 1}"></button>`,
+    ).join('')
+    dotsWrap.querySelectorAll('button').forEach((b) =>
+      b.addEventListener('click', () => {
+        idx = Number((b as HTMLElement).dataset.dot)
+        render()
+      }),
+    )
+  }
+  document.getElementById('route-prev')?.addEventListener('click', () => {
+    idx = (idx - 1 + ROUTES.length) % ROUTES.length
+    render()
+  })
+  document.getElementById('route-next')?.addEventListener('click', () => {
+    idx = (idx + 1) % ROUTES.length
+    render()
+  })
+  render()
+</script>

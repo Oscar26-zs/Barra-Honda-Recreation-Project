@@ -1,0 +1,86 @@
+---
+/*
+ * Home §1 — Hero. Fondo hero-salida.jpg + doble gradiente, título en 2 líneas,
+ * countdown en vivo (setInterval) y CTA.
+ * Fuente: desing/docs/06 · 07 (countdown) · 08 (imagen) · 03 (escalas de heading)
+ */
+import Kicker from '../Kicker.astro'
+---
+
+<section class="relative min-h-[80vh] sm:min-h-[85vh] flex items-center overflow-hidden bg-night" id="inicio">
+  <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('/assets/hero-salida.jpg')"></div>
+  <div class="absolute inset-0 bg-gradient-to-b from-night/75 via-night/50 to-night/25"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-night via-transparent to-night/15"></div>
+
+  <div class="relative max-w-5xl mx-auto px-6 py-20 sm:py-24 w-full">
+    <Kicker tone="white" class="mb-5">5.ª Edición · 6 de diciembre de 2026</Kicker>
+
+    <h1 class="font-poster font-black uppercase leading-none text-foam">
+      <span class="block text-5xl sm:text-6xl md:text-8xl lg:text-9xl tracking-tight">MTB El Valle</span>
+      <span class="block text-3xl sm:text-4xl md:text-6xl lg:text-7xl tracking-wide text-sky mt-1">del Nacaome</span>
+    </h1>
+
+    <p class="mt-6 max-w-xl text-sm sm:text-base text-pale/80 leading-relaxed">
+      Una rodada recreativa por los caminos de Barra Honda, Guanacaste. Para toda la
+      familia, todos los niveles. Domingo 6 de diciembre, 7:00 a.m., salida desde el
+      Gimnasio de la Escuela de Barra Honda.
+    </p>
+
+    <div class="mt-10 flex gap-4 sm:gap-6 md:gap-10" id="countdown">
+      {
+        [
+          ['days', 'Días'],
+          ['hours', 'Horas'],
+          ['minutes', 'Min'],
+          ['seconds', 'Seg'],
+        ].map(([unit, label], i) => (
+          <>
+            {i > 0 && (
+              <span class="font-poster font-black text-2xl sm:text-4xl text-mist/40 self-start mt-1 sm:mt-2">:</span>
+            )}
+            <div class="flex flex-col items-center">
+              <span
+                class="font-poster font-black text-4xl sm:text-5xl md:text-6xl text-foam tabular-nums leading-none"
+                data-unit={unit}
+              >
+                00
+              </span>
+              <span class="text-[10px] sm:text-xs font-semibold tracking-[0.2em] uppercase text-mist mt-1.5">
+                {label}
+              </span>
+            </div>
+          </>
+        ))
+      }
+    </div>
+
+    <a
+      href="/inscribete"
+      class="mt-10 inline-block px-8 py-3 bg-river hover:bg-sky text-white font-poster font-bold text-base tracking-[0.2em] uppercase transition-colors"
+    >
+      Inscribirme
+    </a>
+  </div>
+</section>
+
+<script>
+  const EVENT_DATE = new Date('2026-12-06T07:00:00-06:00')
+  const units: Record<string, HTMLElement | null> = {
+    days: document.querySelector('[data-unit="days"]'),
+    hours: document.querySelector('[data-unit="hours"]'),
+    minutes: document.querySelector('[data-unit="minutes"]'),
+    seconds: document.querySelector('[data-unit="seconds"]'),
+  }
+  function tick() {
+    const diff = Math.max(0, EVENT_DATE.getTime() - Date.now())
+    const set = (el: HTMLElement | null, n: number) => {
+      if (el) el.textContent = String(n).padStart(2, '0')
+    }
+    set(units.days, Math.floor(diff / 86400000))
+    set(units.hours, Math.floor((diff % 86400000) / 3600000))
+    set(units.minutes, Math.floor((diff % 3600000) / 60000))
+    set(units.seconds, Math.floor((diff % 60000) / 1000))
+  }
+  tick()
+  setInterval(tick, 1000)
+</script>

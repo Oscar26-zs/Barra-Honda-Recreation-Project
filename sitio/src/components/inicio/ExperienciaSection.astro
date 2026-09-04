@@ -1,0 +1,78 @@
+---
+/*
+ * Home §5 — "Fin de semana completo". Acordeón en mobile, tarjetas 2-col en tablet/desktop.
+ * Fuente: desing/docs/06 · 07 (acordeones) · 08 (4 fotos Unsplash — placeholders temporales)
+ * Copy: autoría propia (Known Gap #5).
+ */
+import Kicker from '../Kicker.astro'
+import SectionGlow from '../SectionGlow.astro'
+import AccordionRow from '../AccordionRow.astro'
+
+const U = 'https://images.unsplash.com/photo-'
+const q = '?w=700&h=500&fit=crop&auto=format'
+
+const actividades = [
+  {
+    titulo: 'Concierto en vivo — Plaza de Deportes',
+    foto: `${U}1493225457124-a3eb161ffa5f${q}`,
+    texto:
+      'Sábado por la noche, agrupaciones de la zona en la plaza de deportes de Barra Honda. Entrada libre para toda la familia.',
+  },
+  {
+    titulo: 'Ternerada nocturna — Plaza de Toros',
+    foto: `${U}1516214104703-d870798883c5${q}`,
+    texto:
+      'Monta de toros y tradición guanacasteca en la plaza de toros del pueblo, con ventas de comida típica.',
+  },
+  {
+    titulo: 'Tours guiados — Parque Nacional',
+    foto: `${U}1441974231531-c6227db76b6e${q}`,
+    texto:
+      'Recorridos a las cuevas del Parque Nacional Barra Honda con guías locales. Cupo limitado, se reserva el día del evento.',
+  },
+  {
+    titulo: 'Feria de emprendedores',
+    foto: `${U}1555529669-e69e7aa0ba9a${q}`,
+    texto:
+      'Productoras y productores de Nicoya con artesanía, café y repostería. Domingo a partir de las 9:00 a.m.',
+  },
+]
+---
+
+<section class="relative overflow-hidden py-16 sm:py-20 md:py-24 bg-cloud">
+  <SectionGlow />
+  <div class="relative max-w-6xl mx-auto px-6">
+    <Kicker class="mb-4">Fin de semana completo</Kicker>
+    <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl md:text-6xl text-ink">
+      No solo se trata de rodar
+    </h2>
+
+    <!-- mobile: acordeón -->
+    <div class="mt-8 sm:hidden">
+      {
+        actividades.map((a, i) => (
+          <AccordionRow title={a.titulo} index={String(i + 1).padStart(2, '0')} thumb={a.foto}>
+            {a.texto}
+          </AccordionRow>
+        ))
+      }
+    </div>
+
+    <!-- tablet / desktop: tarjetas 2-col -->
+    <div class="mt-8 hidden sm:grid grid-cols-2 gap-4 sm:gap-5">
+      {
+        actividades.map((a) => (
+          <article class="bg-paper border border-river/20 overflow-hidden">
+            <img src={a.foto} alt={a.titulo} class="w-full aspect-[7/5] object-cover" loading="lazy" />
+            <div class="p-6 sm:p-7">
+              <h3 class="text-2xl font-poster font-black uppercase leading-none text-ink">{a.titulo}</h3>
+              <p class="mt-3 text-sm text-slate leading-relaxed">{a.texto}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="mt-6 text-xs text-slate/60">Imágenes de referencia — se reemplazan por fotografía oficial del evento.</p>
+  </div>
+</section>

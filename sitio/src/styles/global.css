@@ -1,0 +1,43 @@
+/*
+ * Sistema de diseño — copia del index.css original.
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/02-colors.md y 03-typography.md
+ * Se importa una sola vez desde src/layouts/Base.astro.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,900;1,700&family=Inter:wght@300;400;500;600&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-poster: 'Barlow Condensed', sans-serif;
+
+  --color-night:  #070c19;
+  --color-abyss:  #0a1022;
+  --color-dusk:   #0f1c32;
+  --color-ridge:  #162540;
+  --color-river:  #2575b2;
+  --color-sky:    #3499cc;
+  --color-foam:   #d8e8f3;
+  --color-mist:   #6a8fa8;
+  --color-pale:   #a8c4d8;
+
+  --color-paper:  #ffffff;
+  --color-cloud:  #f2f6fa;
+  --color-ink:    #0a1022;
+  --color-slate:  #4d6478;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: #070c19;
+  color: #d8e8f3;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(37,117,178,0.4); border-radius: 2px; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(37,117,178,0.4) transparent; }
