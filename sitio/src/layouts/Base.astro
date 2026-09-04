@@ -4,22 +4,25 @@
  * Fuente: .specify/specs/001-sitio-publico/desing/docs/06-pages-sections.md
  * Plan: .specify/specs/001-sitio-publico/plan.md → "Source Code"
  */
-import '../styles/global.css'
-import Nav from '../components/Nav.astro'
-import Footer from '../components/Footer.astro'
+import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
 
 interface Props {
-  title: string
-  active: 'inicio' | 'galeria' | 'inscribete' | 'consultar'
+  title: string;
+  active: "inicio" | "galeria" | "inscribete" | "consultar";
 }
-const { title, active } = Astro.props
+const { title, active } = Astro.props;
 ---
-<!DOCTYPE html>
+
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} · MTB El Valle del Nacaome</title>
+    <ClientRouter />
   </head>
   <body class="min-h-full bg-night text-foam">
     <Nav active={active} />

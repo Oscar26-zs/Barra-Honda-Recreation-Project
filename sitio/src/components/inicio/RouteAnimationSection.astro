@@ -15,8 +15,18 @@ const { idSuffix, light = false, reverse = false } = Astro.props
 const trackColor = light ? '#a8c4d8' : '#1c2c42'
 const progColor = light ? '#2575b2' : '#3499cc'
 const silhouetteBg = light ? 'bg-[#1c4f7a]' : 'bg-paper'
+
+// Halo azul: sutil en modo claro (evita el corte marcado con la sección inferior).
+const glowRgb = light ? '37,117,178' : '52,153,204'
+const glowAlpha = light ? 0.14 : 0.4
+const glowRadius = light ? 55 : 90
+const cyclistShadow = light
+  ? 'drop-shadow-[0_0_6px_rgba(37,117,178,0.2)]'
+  : 'drop-shadow-[0_0_14px_rgba(52,153,204,0.55)]'
+// En modo claro el borde superior debe fundirse con la sección de arriba (bg-cloud)
+// y el inferior con la de abajo (bg-paper) — así no se nota el corte entre secciones.
 const gradient = light
-  ? 'bg-gradient-to-b from-cloud via-[#dfe9f2] to-[#cfe0ec]'
+  ? 'bg-gradient-to-b from-cloud via-[#e6eef5] to-paper'
   : 'bg-gradient-to-b from-night via-dusk to-abyss'
 ---
 
@@ -48,22 +58,32 @@ const gradient = light
     <div
       id={`route-cyclist-${idSuffix}`}
       aria-hidden="true"
-      class={`absolute w-11 sm:w-16 md:w-20 aspect-[302/251] pointer-events-none ${silhouetteBg} drop-shadow-[0_0_14px_rgba(52,153,204,0.55)]`}
+      class={`absolute w-11 sm:w-16 md:w-20 aspect-[302/251] pointer-events-none ${silhouetteBg} ${cyclistShadow}`}
       style="mask-image: url('/assets/cyclist-silhouette.png'); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-image: url('/assets/cyclist-silhouette.png'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;"
     >
     </div>
   </div>
 </section>
 
-<script is:inline define:vars={{ idSuffix }}>
-  const VB_W = 1000
-  const VB_H = 280
-  const section = document.getElementById(`route-anim-${idSuffix}`)
-  const path = document.getElementById(`route-progress-${idSuffix}`)
-  const cyclist = document.getElementById(`route-cyclist-${idSuffix}`)
-  const glow = document.getElementById(`route-anim-glow-${idSuffix}`)
+<script is:inline define:vars={{ idSuffix, glowRgb, glowAlpha, glowRadius }} data-astro-rerun>
+  // data-astro-rerun: con <ClientRouter /> los scripts NO se re-ejecutan al navegar;
+  // esto fuerza la re-ejecución en cada page-load y limpia los listeners previos.
+  ;(() => {
+    const VB_W = 1000
+    const VB_H = 280
+    const key = `__routeAnim_${idSuffix}`
 
-  if (section && path && cyclist && glow) {
+    // Aborta la instancia anterior (listeners sobre nodos ya reemplazados).
+    if (window[key]) window[key].abort()
+    const ac = new AbortController()
+    window[key] = ac
+
+    const section = document.getElementById(`route-anim-${idSuffix}`)
+    const path = document.getElementById(`route-progress-${idSuffix}`)
+    const cyclist = document.getElementById(`route-cyclist-${idSuffix}`)
+    const glow = document.getElementById(`route-anim-glow-${idSuffix}`)
+    if (!section || !path || !cyclist || !glow) return
+
     const update = () => {
       const rect = section.getBoundingClientRect()
       const vh = window.innerHeight
@@ -79,10 +99,12 @@ const gradient = light
       cyclist.style.left = `${xPct}%`
       cyclist.style.top = `${yPct}%`
       cyclist.style.transform = 'translate(-12%, -66%)'
-      glow.style.background = `radial-gradient(90px circle at ${xPct}% ${yPct}%, rgba(52,153,204,0.4), transparent 55%)`
+      glow.style.background = `radial-gradient(${glowRadius}px circle at ${xPct}% ${yPct}%, rgba(${glowRgb},${glowAlpha}), transparent 55%)`
     }
+
     update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-  }
+    requestAnimationFrame(update)
+    window.addEventListener('scroll', update, { passive: true, signal: ac.signal })
+    window.addEventListener('resize', update, { signal: ac.signal })
+  })()
 </script>

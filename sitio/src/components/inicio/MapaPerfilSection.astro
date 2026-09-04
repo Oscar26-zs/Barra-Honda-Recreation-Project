@@ -35,6 +35,8 @@ import Kicker from '../Kicker.astro'
 </section>
 
 <script>
+  // Se re-ejecuta en cada navegación con View Transitions (astro:page-load).
+  function initMapaPerfil() {
   const ROUTES = [
     {
       name: 'Mirador Nacaome — Parque Nacional',
@@ -97,4 +99,7 @@ import Kicker from '../Kicker.astro'
     render()
   })
   render()
+  }
+
+  document.addEventListener('astro:page-load', initMapaPerfil)
 </script>

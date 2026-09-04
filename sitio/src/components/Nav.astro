@@ -129,6 +129,8 @@ const LINKS = [
 </div>
 
 <script>
+  // Se re-ejecuta en cada navegación con View Transitions (astro:page-load).
+  function initNav() {
   const toggle = document.getElementById('nav-toggle')
   const mobile = document.getElementById('nav-mobile')
   const iconOpen = document.getElementById('nav-icon-open')
@@ -170,4 +172,7 @@ const LINKS = [
     window.addEventListener('scroll', updateTransparency, { passive: true })
     updateTransparency()
   }
+  }
+
+  document.addEventListener('astro:page-load', initNav)
 </script>

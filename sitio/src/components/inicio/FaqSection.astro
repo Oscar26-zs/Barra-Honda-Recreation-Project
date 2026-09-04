@@ -28,7 +28,7 @@ const faqs = [
       Todo lo que necesitas saber
     </h2>
 
-    <div class="mt-8">
+    <div class="mt-8" data-accordion-exclusive>
       {faqs.map((f) => <AccordionRow title={f.q}>{f.a}</AccordionRow>)}
     </div>
   </div>

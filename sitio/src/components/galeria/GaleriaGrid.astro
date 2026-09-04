@@ -103,6 +103,8 @@ const ediciones = ['todo', '1', '2', '3', '4']
 </div>
 
 <script>
+  // Se re-ejecuta en cada navegación con View Transitions (astro:page-load).
+  function initGaleria() {
   let tipo = 'todo'
   let edicion = 'todo'
 
@@ -148,4 +150,7 @@ const ediciones = ['todo', '1', '2', '3', '4']
     lightbox.classList.add('hidden')
     lightbox.classList.remove('flex')
   })
+  }
+
+  document.addEventListener('astro:page-load', initGaleria)
 </script>
