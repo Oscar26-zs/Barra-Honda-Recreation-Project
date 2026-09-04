@@ -2,11 +2,23 @@
   "permissions": {
     "allow": [
       "Bash(powershell.exe -File \".specify/scripts/powershell/resolve-template.ps1\" \"constitution-template\" \"-Json\")",
-      "Bash(powershell.exe -File \".specify/scripts/powershell/resolve-template.ps1\" \"spec-template\" \"-Json\")"
+      "Bash(powershell.exe -File \".specify/scripts/powershell/resolve-template.ps1\" \"spec-template\" \"-Json\")",
+      "Bash(powershell -File \".specify/scripts/powershell/check-prerequisites.ps1\" -Json -RequireTasks -IncludeTasks)",
+      "Bash(powershell -File \".specify/scripts/powershell/check-prerequisites.ps1\" -Json -RequireTasks -IncludeTasks -Feature \"002-panel-administrativo\")",
+      "Bash(powershell -File \"../../scripts/powershell/check-prerequisites.ps1\" -Json -RequireTasks -IncludeTasks)",
+      "Bash(powershell -Command \"Get-ChildItem '.specify/specs/002-panel-administrativo/checklists/' | Select-Object Name\")",
+      "Bash(powershell -Command ' *)",
+      "Bash(pnpm add *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }
