@@ -1,14 +1,26 @@
 ---
 /*
- * Home §1 — Hero. Fondo hero-salida.jpg + doble gradiente, título en 2 líneas,
+ * Home §1 — Hero. Video de fondo (Cloudinary) + doble gradiente, título en 2 líneas,
  * countdown en vivo (setInterval) y CTA.
  * Fuente: desing/docs/06 · 07 (countdown) · 08 (imagen) · 03 (escalas de heading)
  */
 import Kicker from '../Kicker.astro'
+
+const HERO_VIDEO = 'https://res.cloudinary.com/lra0grpe/video/upload/q_auto/v1788539654/WhatsApp_Video_2026-09-04_at_8.56.34_AM.mp4'
+const HERO_POSTER = 'https://res.cloudinary.com/lra0grpe/video/upload/so_0,f_auto,q_auto,w_1600/v1788539654/WhatsApp_Video_2026-09-04_at_8.56.34_AM.jpg'
 ---
 
 <section class="relative min-h-[80vh] sm:min-h-[85vh] flex items-center overflow-hidden bg-night" id="inicio">
-  <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('/assets/hero-salida.jpg')"></div>
+  <video
+    class="absolute inset-0 w-full h-full object-cover"
+    src={HERO_VIDEO}
+    poster={HERO_POSTER}
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+  />
   <div class="absolute inset-0 bg-gradient-to-b from-night/75 via-night/50 to-night/25"></div>
   <div class="absolute inset-0 bg-gradient-to-t from-night via-transparent to-night/15"></div>
 
