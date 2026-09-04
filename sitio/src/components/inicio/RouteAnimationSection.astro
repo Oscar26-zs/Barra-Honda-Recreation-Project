@@ -1,0 +1,88 @@
+---
+/*
+ * Home §2 / §6 — franja de ruta con silueta de ciclista animada por scroll.
+ * Fuente: desing/docs/07-interactivity.md → "Silueta de ciclista animada con scroll"
+ * §2: modo oscuro (light=false). §6: modo claro + espejado (light + reverse).
+ * `idSuffix` distingue las 2 instancias en la misma página.
+ */
+interface Props {
+  idSuffix: string
+  light?: boolean
+  reverse?: boolean
+}
+const { idSuffix, light = false, reverse = false } = Astro.props
+
+const trackColor = light ? '#a8c4d8' : '#1c2c42'
+const progColor = light ? '#2575b2' : '#3499cc'
+const silhouetteBg = light ? 'bg-[#1c4f7a]' : 'bg-paper'
+const gradient = light
+  ? 'bg-gradient-to-b from-cloud via-[#dfe9f2] to-[#cfe0ec]'
+  : 'bg-gradient-to-b from-night via-dusk to-abyss'
+---
+
+<section
+  id={`route-anim-${idSuffix}`}
+  class={`relative h-36 sm:h-44 md:h-52 overflow-hidden ${gradient}`}
+>
+  <div class="absolute inset-0" id={`route-anim-flip-${idSuffix}`} style={reverse ? 'transform: scaleX(-1)' : ''}>
+    <div class="absolute inset-0 transition-[background] duration-300 ease-out" id={`route-anim-glow-${idSuffix}`}></div>
+    <svg viewBox="0 0 1000 280" class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+      <path
+        id={`route-track-${idSuffix}`}
+        d="M0,150 C90,60 160,220 260,140 C360,60 420,230 520,150 C620,70 690,220 790,140 C870,80 930,180 1000,120"
+        stroke={trackColor}
+        stroke-width="5"
+        fill="none"
+        stroke-linecap="round"></path>
+      <path
+        id={`route-progress-${idSuffix}`}
+        d="M0,150 C90,60 160,220 260,140 C360,60 420,230 520,150 C620,70 690,220 790,140 C870,80 930,180 1000,120"
+        stroke={progColor}
+        stroke-width="5"
+        fill="none"
+        stroke-linecap="round"
+        pathLength="100"
+        stroke-dasharray="100"
+        stroke-dashoffset="100"></path>
+    </svg>
+    <div
+      id={`route-cyclist-${idSuffix}`}
+      aria-hidden="true"
+      class={`absolute w-11 sm:w-16 md:w-20 aspect-[302/251] pointer-events-none ${silhouetteBg} drop-shadow-[0_0_14px_rgba(52,153,204,0.55)]`}
+      style="mask-image: url('/assets/cyclist-silhouette.png'); mask-size: contain; mask-repeat: no-repeat; mask-position: center; -webkit-mask-image: url('/assets/cyclist-silhouette.png'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center;"
+    >
+    </div>
+  </div>
+</section>
+
+<script is:inline define:vars={{ idSuffix }}>
+  const VB_W = 1000
+  const VB_H = 280
+  const section = document.getElementById(`route-anim-${idSuffix}`)
+  const path = document.getElementById(`route-progress-${idSuffix}`)
+  const cyclist = document.getElementById(`route-cyclist-${idSuffix}`)
+  const glow = document.getElementById(`route-anim-glow-${idSuffix}`)
+
+  if (section && path && cyclist && glow) {
+    const update = () => {
+      const rect = section.getBoundingClientRect()
+      const vh = window.innerHeight
+      const total = rect.height + vh
+      const traveled = vh - rect.top
+      const progress = Math.min(1, Math.max(0, traveled / total))
+      const len = path.getTotalLength()
+      const pt = path.getPointAtLength(progress * len)
+
+      path.setAttribute('stroke-dashoffset', String(100 - progress * 100))
+      const xPct = (pt.x / VB_W) * 100
+      const yPct = (pt.y / VB_H) * 100
+      cyclist.style.left = `${xPct}%`
+      cyclist.style.top = `${yPct}%`
+      cyclist.style.transform = 'translate(-12%, -66%)'
+      glow.style.background = `radial-gradient(90px circle at ${xPct}% ${yPct}%, rgba(52,153,204,0.4), transparent 55%)`
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+  }
+</script>

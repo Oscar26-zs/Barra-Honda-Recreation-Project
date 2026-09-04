@@ -1,0 +1,28 @@
+---
+/*
+ * "Consultar mi inscripción" (FR-024 a FR-026). Isla n.º 2 (folio + cédula → RPC).
+ * Fuente: desing/docs/06-pages-sections.md → "src/pages/consultar.astro"
+ */
+import Base from '../layouts/Base.astro'
+import Kicker from '../components/Kicker.astro'
+import ConsultaEstado from '../components/islands/ConsultaEstado.tsx'
+---
+
+<Base title="Consultar inscripción" active="consultar">
+  <section class="relative overflow-hidden bg-paper py-16 sm:py-20 md:py-24">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+      <Kicker class="mb-4">Seguimiento</Kicker>
+      <h1 class="font-poster font-black uppercase leading-none text-6xl md:text-8xl text-ink">
+        Consultar inscripción
+      </h1>
+      <p class="mt-4 text-sm text-slate leading-relaxed max-w-2xl">
+        Ingresa el folio que recibiste al inscribirte y el número de cédula de cualquier
+        integrante del grupo para ver el estado actual.
+      </p>
+
+      <div class="mt-8">
+        <ConsultaEstado client:load />
+      </div>
+    </div>
+  </section>
+</Base>

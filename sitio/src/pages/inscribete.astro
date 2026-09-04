@@ -1,0 +1,40 @@
+---
+/*
+ * "Precios / Inscripción" (spec) = página Inscríbete del diseño.
+ * Tarjeta de tarifa vigente (FR-021) + formulario de inscripción (isla n.º 1, FR-003 a
+ * FR-008). La tarifa y el envío se resuelven en el cliente (RPC con clave anon); el
+ * build estático no depende de Supabase.
+ * Fuente: desing/docs/06-pages-sections.md → "src/pages/inscribete.astro"
+ */
+import Base from '../layouts/Base.astro'
+import Kicker from '../components/Kicker.astro'
+import FormularioInscripcion from '../components/islands/FormularioInscripcion.tsx'
+---
+
+<Base title="Inscríbete" active="inscribete">
+  <section class="relative overflow-hidden bg-paper py-16 sm:py-20 md:py-24">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+      <Kicker class="mb-4">5.ª Edición · 6 de diciembre de 2026</Kicker>
+      <h1 class="font-poster font-black uppercase leading-none text-4xl min-[420px]:text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-ink">
+        Inscríbete
+      </h1>
+      <p class="mt-4 text-sm text-slate leading-relaxed max-w-2xl">
+        Completa los datos del responsable y de cada participante, adjunta el comprobante de
+        pago del grupo y envía el formulario. Recibirás un folio para dar seguimiento a tu
+        inscripción. No necesitas crear una cuenta.
+      </p>
+
+      <div class="mt-8">
+        <FormularioInscripcion client:load />
+      </div>
+
+      <div class="mt-10 border-t border-river/15 pt-6 text-sm text-slate leading-relaxed">
+        <p class="font-poster font-bold uppercase tracking-[0.14em] text-ink text-xs">Datos para el pago</p>
+        <p class="mt-2">
+          Transferencia o SINPE Móvil al <strong class="text-ink">8888-8888</strong> ·
+          MTB El Valle del Nacaome. Adjunta la captura del comprobante en el formulario.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>

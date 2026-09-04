@@ -78,6 +78,7 @@ Representa a cada persona individual inscrita dentro de un grupo.
 | `cedula` | Número de cédula del participante |
 | `nombre` | Nombre del participante |
 | `apellidos` | Apellidos del participante |
+| `genero` | `Hombre` o `Mujer` — `CHECK (genero IN ('Hombre','Mujer'))`. Añadido 2026-09-03 (decisión del propietario). Se captura en el formulario público por participante; la columna se crea en `supabase/migrations/004_crear_inscripcion_genero_storage.sql` |
 | `talla_camisa` | Talla de camisa del participante |
 
 **Quién opera sobre esta entidad:**

@@ -1,0 +1,173 @@
+---
+/*
+ * Nav — traducción de src/components/Nav.tsx del diseño.
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/06-pages-sections.md
+ * Menú desktop estático (xl:flex); menú mobile full-screen con opacidad + translate-y
+ * escalonado por link, ahora con <script> en vez de useState.
+ */
+interface Props {
+  active: 'inicio' | 'galeria' | 'inscribete' | 'consultar'
+}
+const { active } = Astro.props
+
+const LINKS = [
+  { id: 'inicio', href: '/', label: 'Inicio' },
+  { id: 'galeria', href: '/galeria', label: 'Galería' },
+  { id: 'inscribete', href: '/inscribete', label: 'Inscríbete' },
+  { id: 'consultar', href: '/consultar', label: 'Consultar' },
+]
+---
+
+<nav
+  id="nav-bar"
+  data-active={active}
+  class="fixed top-0 left-0 right-0 z-50 transition-colors duration-300 bg-night/96 backdrop-blur-md border-b border-river/10"
+>
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="/" class="font-poster font-black text-lg tracking-[0.12em] text-foam uppercase">
+      MTB El Valle
+    </a>
+
+    <div class="hidden xl:flex items-center gap-7">
+      {
+        LINKS.map((l) => (
+          <a
+            href={l.href}
+            class:list={[
+              'text-xs font-semibold tracking-[0.14em] uppercase transition-colors',
+              active === l.id ? 'text-sky' : 'text-mist hover:text-foam',
+            ]}
+          >
+            {l.label}
+          </a>
+        ))
+      }
+    </div>
+
+    <a
+      href="/inscribete"
+      class="hidden xl:block px-5 py-1.5 bg-river hover:bg-sky text-white text-xs font-poster font-bold tracking-[0.16em] uppercase transition-colors"
+    >
+      Inscribirme
+    </a>
+
+    <button
+      id="nav-toggle"
+      class="xl:hidden relative z-10 p-2 text-foam"
+      aria-label="Menú"
+      aria-expanded="false"
+    >
+      <svg id="nav-icon-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 6h18M3 12h18M3 18h18" />
+      </svg>
+      <svg id="nav-icon-close" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+</nav>
+
+<!-- Menú mobile — pantalla completa -->
+<div
+  id="nav-mobile"
+  class="xl:hidden fixed inset-0 z-40 bg-night transition-opacity duration-300 opacity-0 pointer-events-none"
+>
+  <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <svg class="absolute inset-0 w-full h-full opacity-[0.07]" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path d="M-5,22 C15,12 25,28 40,20 C55,12 65,25 80,17 C90,13 96,18 105,14" stroke="#f4f7fa" stroke-width="0.3" fill="none" stroke-dasharray="1.4 1.2" />
+      <path d="M-5,62 C16,54 28,68 43,59 C58,50 67,65 83,56 C92,51 98,58 105,53" stroke="#f4f7fa" stroke-width="0.3" fill="none" stroke-dasharray="1.4 1.2" />
+    </svg>
+    <div class="absolute w-80 h-80 rounded-full bg-river/20 blur-3xl -bottom-24 -right-16"></div>
+  </div>
+
+  <div class="relative h-full flex flex-col px-8 pt-24 pb-10 overflow-y-auto">
+    <nav class="flex-1">
+      {
+        LINKS.map((l, i) => (
+          <a
+            href={l.href}
+            class:list={[
+              'group flex items-baseline gap-4 py-3 w-full text-left border-b border-river/10 transition-all duration-300 opacity-0 translate-y-4',
+            ]}
+            style={`transition-delay: ${90 + i * 55}ms`}
+            data-nav-link
+          >
+            <span class="font-poster font-black text-xs text-river/70 shrink-0">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span
+              class:list={[
+                'font-poster font-black text-4xl sm:text-5xl uppercase tracking-tight transition-colors',
+                active === l.id ? 'text-sky' : 'text-foam group-hover:text-sky',
+              ]}
+            >
+              {l.label}
+            </span>
+          </a>
+        ))
+      }
+    </nav>
+
+    <div
+      class="mt-8 transition-all duration-300 opacity-0 translate-y-4"
+      data-nav-cta
+      style={`transition-delay: ${90 + LINKS.length * 55 + 60}ms`}
+    >
+      <a
+        href="/inscribete"
+        class="block text-center w-full py-4 bg-river hover:bg-sky text-white font-poster font-bold text-sm tracking-[0.2em] uppercase transition-colors"
+      >
+        Inscribirme — ₡18.000
+      </a>
+      <div class="mt-6 flex gap-5">
+        <a href="https://facebook.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Facebook</a>
+        <span class="text-ridge">·</span>
+        <a href="https://instagram.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Instagram</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const toggle = document.getElementById('nav-toggle')
+  const mobile = document.getElementById('nav-mobile')
+  const iconOpen = document.getElementById('nav-icon-open')
+  const iconClose = document.getElementById('nav-icon-close')
+  const navBar = document.getElementById('nav-bar')
+
+  let open = false
+
+  function setOpen(v: boolean) {
+    if (!mobile || !toggle || !iconOpen || !iconClose) return
+    open = v
+    mobile.classList.toggle('opacity-100', open)
+    mobile.classList.toggle('pointer-events-auto', open)
+    mobile.classList.toggle('opacity-0', !open)
+    mobile.classList.toggle('pointer-events-none', !open)
+    iconOpen.classList.toggle('hidden', open)
+    iconClose.classList.toggle('hidden', !open)
+    toggle.setAttribute('aria-expanded', String(open))
+    document.querySelectorAll<HTMLElement>('[data-nav-link], [data-nav-cta]').forEach((el) => {
+      el.classList.toggle('opacity-100', open)
+      el.classList.toggle('translate-y-0', open)
+      el.classList.toggle('opacity-0', !open)
+      el.classList.toggle('translate-y-4', !open)
+    })
+  }
+
+  toggle?.addEventListener('click', () => setOpen(!open))
+
+  // Nav transparente sobre el Hero: solo en la Home, sin scroll y con el menú cerrado.
+  if (navBar && navBar.dataset.active === 'inicio') {
+    const updateTransparency = () => {
+      const transparent = window.scrollY <= 60 && !open
+      navBar.classList.toggle('bg-transparent', transparent)
+      navBar.classList.toggle('border-transparent', transparent)
+      navBar.classList.toggle('bg-night/96', !transparent)
+      navBar.classList.toggle('backdrop-blur-md', !transparent)
+      navBar.classList.toggle('border-river/10', !transparent)
+    }
+    window.addEventListener('scroll', updateTransparency, { passive: true })
+    updateTransparency()
+  }
+</script>

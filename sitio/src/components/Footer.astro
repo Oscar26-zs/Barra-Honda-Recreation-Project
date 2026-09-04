@@ -1,0 +1,58 @@
+---
+/*
+ * Footer — traducción directa de src/components/Footer.tsx del diseño (estático).
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/06-pages-sections.md
+ */
+const LINKS = [
+  { href: '/', label: 'Inicio' },
+  { href: '/galeria', label: 'Galería' },
+  { href: '/inscribete', label: 'Inscríbete' },
+  { href: '/consultar', label: 'Consultar inscripción' },
+]
+---
+
+<footer class="bg-abyss border-t border-river/15 mt-0">
+  <div class="w-full overflow-hidden opacity-40">
+    <svg viewBox="0 0 1440 32" preserveAspectRatio="none" class="w-full h-8">
+      <path
+        d="M0,20 L60,16 L140,10 L220,18 L300,8 L380,14 L460,4 L540,12 L620,6 L700,14 L780,2 L860,10 L940,16 L1020,6 L1100,12 L1180,8 L1260,16 L1340,10 L1440,14"
+        stroke="#2575b2"
+        stroke-width="1"
+        fill="none"></path>
+    </svg>
+  </div>
+  <div class="max-w-7xl mx-auto px-6 py-10 sm:py-12 md:py-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 md:gap-12">
+    <div class="sm:col-span-2 md:col-span-1">
+      <p class="font-poster font-black text-xl sm:text-2xl tracking-widest text-foam uppercase mb-2">
+        MTB El Valle del Nacaome
+      </p>
+      <p class="text-xs text-mist leading-relaxed mb-4 sm:mb-6">
+        5.ª Edición · Barra Honda, Guanacaste, Costa Rica<br />
+        Domingo 6 de diciembre de 2026 · 7:00 a.m.<br />
+        Punto de salida: Gimnasio de la Escuela de Barra Honda<br />
+        Inversión: ₡18.000 por persona
+      </p>
+      <div class="flex gap-4">
+        <a href="https://facebook.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Facebook</a>
+        <span class="text-ridge">·</span>
+        <a href="https://instagram.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Instagram</a>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5">Secciones</p>
+      <ul class="space-y-2 sm:space-y-2.5">
+        {LINKS.map((l) => <li><a href={l.href} class="text-sm text-pale/70 hover:text-foam transition-colors">{l.label}</a></li>)}
+      </ul>
+    </div>
+    <div>
+      <p class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5">Contacto</p>
+      <p class="text-sm text-pale/70 leading-relaxed">
+        ¿Preguntas o coordinación?<br />
+        Escríbenos por redes sociales<br />
+        como <strong class="text-foam">MTB El Valle del Nacaome</strong><br />
+        en Facebook o Instagram.
+      </p>
+      <p class="mt-4 sm:mt-5 text-xs text-mist/50">© 2026 MTB El Valle del Nacaome.<br />Todos los derechos reservados.</p>
+    </div>
+  </div>
+</footer>

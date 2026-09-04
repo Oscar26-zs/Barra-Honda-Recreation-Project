@@ -1,0 +1,35 @@
+---
+/*
+ * Home §9 — "Preguntas frecuentes". Acordeón estándar (grid-rows push-down) sobre
+ * hero-salida.jpg con overlay claro bg-paper/92.
+ * Fuente: desing/docs/06 · 07 (acordeones — al abrir, la página crece)
+ * Copy: autoría propia (Known Gap #5).
+ */
+import Kicker from '../Kicker.astro'
+import AccordionRow from '../AccordionRow.astro'
+
+const faqs = [
+  { q: '¿Qué pasa si llueve?', a: 'El evento se realiza aunque llueva. Solo se suspende o reprograma si las autoridades declaran alerta por condiciones peligrosas; en ese caso se avisa por redes sociales.' },
+  { q: '¿Necesito ser ciclista experimentado?', a: 'No. La ruta es recreativa y se rueda en grupo, sin cronómetro. Hay vehículo escoba para quien necesite apoyo.' },
+  { q: '¿Puedo inscribir a varias personas a la vez?', a: 'Sí. En el formulario indicas la cantidad de personas y llenas los datos de cada participante. Un solo comprobante de pago cubre a todo el grupo.' },
+  { q: '¿Cómo hago el pago?', a: 'Por transferencia bancaria o SINPE Móvil a la cuenta que aparece en la página de inscripción. Luego adjuntas el comprobante en el formulario.' },
+  { q: '¿Cuándo sabré si mi inscripción fue aprobada?', a: 'Recibirás un correo cuando el equipo revise tu comprobante. También puedes consultar el estado con tu folio y número de cédula en la página "Consultar".' },
+  { q: '¿Hay edad mínima?', a: 'Menores de edad pueden participar acompañados por una persona adulta responsable durante todo el recorrido.' },
+]
+---
+
+<section class="relative overflow-hidden py-16 sm:py-20 md:py-24">
+  <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('/assets/hero-salida.jpg')"></div>
+  <div class="absolute inset-0 bg-paper/92"></div>
+
+  <div class="relative max-w-3xl mx-auto px-6">
+    <Kicker class="mb-4">Preguntas frecuentes</Kicker>
+    <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl md:text-6xl text-ink">
+      Todo lo que necesitas saber
+    </h2>
+
+    <div class="mt-8">
+      {faqs.map((f) => <AccordionRow title={f.q}>{f.a}</AccordionRow>)}
+    </div>
+  </div>
+</section>

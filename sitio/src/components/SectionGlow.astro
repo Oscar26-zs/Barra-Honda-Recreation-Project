@@ -1,0 +1,37 @@
+---
+/*
+ * SectionGlow — fondo decorativo compartido (líneas SVG tipo "ruta punteada" + blobs).
+ * Fuente: .specify/specs/001-sitio-publico/desing/docs/05-components.md
+ * Primer hijo de una <section class="relative overflow-hidden">, con el contenido real
+ * en un <div class="relative"> hermano posterior.
+ */
+interface Props {
+  variant?: 'corners' | 'center'
+  tone?: 'blue' | 'white'
+}
+const { variant = 'corners', tone = 'blue' } = Astro.props
+
+const lineColor = tone === 'white' ? '#f4f7fa' : '#2575b2'
+const lineOpacity = tone === 'white' ? 'opacity-[0.06]' : 'opacity-[0.09]'
+const blobColor = tone === 'white' ? 'bg-foam/5' : 'bg-river/10'
+const blobColorAlt = tone === 'white' ? 'bg-foam/5' : 'bg-sky/10'
+const centerBlobColor = tone === 'white' ? 'bg-foam/[0.04]' : 'bg-river/5'
+---
+
+<div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+  <svg class={`absolute inset-0 w-full h-full ${lineOpacity}`} viewBox="0 0 100 100" preserveAspectRatio="none">
+    <path d="M-5,18 C15,9 25,24 40,17 C55,9 65,21 80,14 C90,10 96,15 105,11" stroke={lineColor} stroke-width="0.3" fill="none" stroke-dasharray="1.4 1.2" />
+    <path d="M-5,52 C16,45 28,58 43,50 C58,42 67,56 83,48 C92,44 98,50 105,46" stroke={lineColor} stroke-width="0.3" fill="none" stroke-dasharray="1.4 1.2" />
+    <path d="M-5,84 C15,77 26,89 40,82 C56,75 64,87 80,80 C90,76 98,82 105,78" stroke={lineColor} stroke-width="0.3" fill="none" stroke-dasharray="1.4 1.2" />
+  </svg>
+  {
+    variant === 'center' ? (
+      <div class={`absolute w-80 h-80 sm:w-[28rem] sm:h-[28rem] rounded-full ${centerBlobColor} blur-3xl top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`} />
+    ) : (
+      <>
+        <div class={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full ${blobColor} blur-3xl -top-16 -left-16`} />
+        <div class={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full ${blobColorAlt} blur-3xl -bottom-20 -right-10`} />
+      </>
+    )
+  }
+</div>
