@@ -4,11 +4,14 @@
  * Fuente: .specify/specs/001-sitio-publico/desing/docs/06-pages-sections.md
  */
 const LINKS = [
-  { href: '/', label: 'Inicio' },
-  { href: '/galeria', label: 'Galería' },
-  { href: '/inscribete', label: 'Inscríbete' },
-  { href: '/consultar', label: 'Consultar inscripción' },
-]
+  { href: "/", label: "Inicio" },
+  { href: "/galeria", label: "Galería" },
+  { href: "/inscribete", label: "Inscríbete" },
+  { href: "/consultar", label: "Consultar inscripción" },
+];
+
+const CHC_LOGO =
+  "https://res.cloudinary.com/lra0grpe/image/upload/v1788542137/d0b1ab84-5797-49c4-804d-56dc579a1622.png";
 ---
 
 <footer class="bg-abyss border-t border-river/15 mt-0">
@@ -21,9 +24,13 @@ const LINKS = [
         fill="none"></path>
     </svg>
   </div>
-  <div class="max-w-7xl mx-auto px-6 py-10 sm:py-12 md:py-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 md:gap-12">
+  <div
+    class="max-w-7xl mx-auto px-6 py-10 sm:py-12 md:py-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 md:gap-12"
+  >
     <div class="sm:col-span-2 md:col-span-1">
-      <p class="font-poster font-black text-xl sm:text-2xl tracking-widest text-foam uppercase mb-2">
+      <p
+        class="font-poster font-black text-xl sm:text-2xl tracking-widest text-foam uppercase mb-2"
+      >
         MTB El Valle del Nacaome
       </p>
       <p class="text-xs text-mist leading-relaxed mb-4 sm:mb-6">
@@ -33,37 +40,85 @@ const LINKS = [
         Inversión: ₡18.000 por persona
       </p>
       <div class="flex gap-4">
-        <a href="https://facebook.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Facebook</a>
+        <a
+          href="https://www.facebook.com/share/1DaJZC1sYB/?mibextid=wwXIfr"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase"
+          >Facebook</a
+        >
         <span class="text-ridge">·</span>
-        <a href="https://instagram.com/MTBElValleDelNacaome" target="_blank" rel="noopener noreferrer" class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase">Instagram</a>
+        <a
+          href="https://www.instagram.com/mtbelvalledelnacaome?igsi=MTBucHlycjB3a3F6eA=="
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-mist hover:text-sky transition-colors text-xs font-semibold tracking-widest uppercase"
+          >Instagram</a
+        >
       </div>
     </div>
     <div>
-      <p class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5">Secciones</p>
+      <p
+        class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5"
+      >
+        Secciones
+      </p>
       <ul class="space-y-2 sm:space-y-2.5">
-        {LINKS.map((l) => <li><a href={l.href} class="text-sm text-pale/70 hover:text-foam transition-colors">{l.label}</a></li>)}
+        {
+          LINKS.map((l) => (
+            <li>
+              <a
+                href={l.href}
+                class="text-sm text-pale/70 hover:text-foam transition-colors"
+              >
+                {l.label}
+              </a>
+            </li>
+          ))
+        }
       </ul>
     </div>
     <div>
-      <p class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5">Contacto</p>
+      <p
+        class="text-xs font-semibold tracking-[0.2em] uppercase text-mist mb-3 sm:mb-5"
+      >
+        Contacto
+      </p>
       <p class="text-sm text-pale/70 leading-relaxed">
         ¿Preguntas o coordinación?<br />
+        <a
+          href="mailto:mtbbarrahonda@gmail.com"
+          class="hover:text-foam transition-colors">mtbbarrahonda@gmail.com</a
+        >
       </p>
       <p class="mt-4 text-sm text-pale/70 leading-relaxed">
         Erlyn Contreras Díaz<br />
-        <a href="tel:+50688601696" class="hover:text-foam transition-colors">8860-1696</a><br />
+        <a href="tel:+50688601696" class="hover:text-foam transition-colors"
+          >8860-1696</a
+        ><br />
         Asdrubal Díaz González<br />
-        <a href="tel:+50688236392" class="hover:text-foam transition-colors">8823-6392</a>
+        <a href="tel:+50688236392" class="hover:text-foam transition-colors"
+          >8823-6392</a
+        >
       </p>
-      <p class="mt-4 sm:mt-5 text-xs text-mist/50">© 2026 MTB El Valle del Nacaome.<br />Todos los derechos reservados.</p>
+      <p class="mt-4 sm:mt-5 text-xs text-mist/50">
+        © 2026 MTB El Valle del Nacaome.<br />Todos los derechos reservados.
+      </p>
     </div>
   </div>
 
   <div class="border-t border-river/10">
-    <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
-      <!-- TODO: reemplazar por el logo real de CHC Studio (public/assets/chc-studio-logo.png o URL de Cloudinary) -->
+    <div
+      class="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-2 text-center"
+    >
+      <img src={CHC_LOGO} alt="CHC Studio" class="h-7 w-7 rounded-full object-contain" />
       <span class="text-[11px] text-mist/50">
-        Sitio desarrollado por <strong class="text-mist/70">CHC Studio</strong>
+        Sitio desarrollado por <strong class="text-mist/70">CHC Studio</strong> ·
+        <a href="tel:+50686927333" class="hover:text-foam transition-colors"
+          >8692-7333</a
+        > ·  
+<a href="tel:+50685241813" class="hover:text-foam transition-colors"
+          >8524 1813</a>
       </span>
     </div>
   </div>
