@@ -9,22 +9,19 @@ import SectionGlow from '../SectionGlow.astro'
 
 const hitos = [
   {
-    n: '01',
-    titulo: 'Salida — Escuela de Barra Honda',
+    titulo: 'Origen',
     texto:
-      'Concentración desde las 6:00 a.m. en el gimnasio de la escuela. Salida controlada a las 7:00 a.m. con acompañamiento de la Cruz Roja y la Policía de Tránsito.',
+      'Nacimos en 2022 como una iniciativa impulsada por vecinos de Barra Honda que buscaban crear un evento deportivo diferente, capaz de promover nuestros paisajes naturales y generar recursos para proyectos de desarrollo comunitario.',
   },
   {
-    n: '02',
-    titulo: 'Mirador del Nacaome',
+    titulo: 'Organización',
     texto:
-      'Ascenso suave por caminos de lastre con vista al valle. Punto de hidratación y fotografía a mitad de recorrido.',
+      'La recreativa es organizada por voluntarios comprometidos con Barra Honda, tanto residentes como personas que, aunque viven en diferentes partes del país, mantienen vivo su aporte al progreso de la comunidad. El respaldo de nuestros patrocinadores ha sido fundamental para consolidar este proyecto año tras año.',
   },
   {
-    n: '03',
-    titulo: 'Parque Nacional Barra Honda',
+    titulo: 'Impacto',
     texto:
-      'Llegada al sector de las cuevas. Frutas, música y actividades para toda la familia en la plaza de deportes.',
+      'Los fondos generados por el evento se invierten directamente en proyectos comunitarios que benefician áreas como salud, deporte, infraestructura y espacios públicos, mejorando la calidad de vida de los habitantes de Barra Honda.',
   },
 ]
 ---
@@ -47,13 +44,12 @@ const hitos = [
 
       <div class="md:col-span-7">
         <Kicker class="mb-4">Sobre la ruta</Kicker>
-        <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl xl:text-6xl text-ink">
-          Un evento de la comunidad, para la comunidad
+        <h2 class="font-poster font-black uppercase leading-none text-4xl sm:text-5xl xl:text-4xl text-ink">
+         PEDALEANDO POR NUESTRA COMUNIDAD Y CONSTRUYENDO NUESTRO FUTURO.
         </h2>
         <p class="mt-5 text-sm sm:text-base text-slate leading-relaxed max-w-2xl">
-          Alrededor de 25 km de caminos rurales, lastre y tramos pavimentados. Un recorrido
-          pensado para disfrutar sin prisa: se rueda en grupo, con paradas de hidratación y
-          punto de asistencia mecánica.
+          Una experiencia que combina deporte, naturaleza y solidaridad, donde cada kilómetro
+recorrido contribuye al desarrollo de Barra Honda y al bienestar de sus habitantes.
         </p>
 
         <ol class="mt-8 space-y-6 border-l-2 border-river/25 pl-6">
@@ -61,7 +57,6 @@ const hitos = [
             hitos.map((h) => (
               <li class="relative">
                 <span class="absolute -left-[1.9rem] top-0.5 w-3 h-3 rounded-full bg-river"></span>
-                <p class="font-poster font-bold text-xs tracking-[0.2em] uppercase text-river">{h.n}</p>
                 <h3 class="mt-1 text-base sm:text-lg font-semibold text-ink">{h.titulo}</h3>
                 <p class="mt-1 text-sm text-slate leading-relaxed">{h.texto}</p>
               </li>
