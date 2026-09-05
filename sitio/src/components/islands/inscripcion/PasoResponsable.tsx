@@ -5,7 +5,7 @@
  * Fuente: desing/docs/07 → "Stepper de Inscríbete"
  */
 import type { Responsable } from '../../../lib/tipos'
-import { Campo, claseLabel } from './campos'
+import { Campo, claseLabel, MensajeError } from './campos'
 
 export const MAX_PARTICIPANTES = 20
 
@@ -13,13 +13,14 @@ export interface ErroresResponsable {
   nombre_contacto?: string
   telefono_contacto?: string
   correo_contacto?: string
+  cantidad?: string
 }
 
 interface Props {
   responsable: Responsable
   onResponsable: (r: Responsable) => void
-  cantidad: number
-  onCantidad: (n: number) => void
+  cantidadTexto: string
+  onCantidadTexto: (v: string) => void
   errores: ErroresResponsable
   onSiguiente: () => void
 }
@@ -27,8 +28,8 @@ interface Props {
 export default function PasoResponsable({
   responsable,
   onResponsable,
-  cantidad,
-  onCantidad,
+  cantidadTexto,
+  onCantidadTexto,
   errores,
   onSiguiente,
 }: Props) {
@@ -84,15 +85,24 @@ export default function PasoResponsable({
           <input
             id="cantidad"
             type="number"
+            inputMode="numeric"
             min={1}
             max={MAX_PARTICIPANTES}
-            value={cantidad}
-            onChange={(e) => {
-              const n = Math.floor(Number(e.target.value)) || 1
-              onCantidad(Math.min(MAX_PARTICIPANTES, Math.max(1, n)))
+            value={cantidadTexto}
+            onChange={(e) => onCantidadTexto(e.target.value)}
+            onBlur={(e) => {
+              const n = Math.floor(Number(e.target.value))
+              if (e.target.value.trim() && Number.isFinite(n) && n >= 1) {
+                onCantidadTexto(String(Math.min(MAX_PARTICIPANTES, n)))
+              }
             }}
-            className="w-32 bg-paper border border-river/25 hover:border-river/50 text-ink text-sm px-4 py-2.5 focus:outline-none focus:border-river transition-colors"
+            className={`w-32 bg-paper border text-ink text-sm px-4 py-2.5 focus:outline-none focus:border-river transition-colors ${
+              errores.cantidad
+                ? 'border-red-500/60'
+                : 'border-river/25 hover:border-river/50'
+            }`}
           />
+          <MensajeError>{errores.cantidad}</MensajeError>
           <p className="text-xs text-slate/60 mt-1">
             Incluye al responsable si también participa. Mínimo 1, máximo {MAX_PARTICIPANTES}.
           </p>
