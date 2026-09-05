@@ -252,6 +252,7 @@ function TarjetaTarifa({ tarifa }: { tarifa: ResultadoTarifa | null }) {
     month: 'long',
     year: 'numeric',
   })
+  const hayDescuento = t.monto_final_con_descuento < t.monto_por_persona
   return (
     <div className="mb-6 bg-cloud border border-river/20 p-5 sm:p-6">
       <p className="text-xs font-semibold tracking-[0.14em] uppercase text-slate">
@@ -261,13 +262,15 @@ function TarjetaTarifa({ tarifa }: { tarifa: ResultadoTarifa | null }) {
         {formatoColones(t.monto_final_con_descuento)}{' '}
         <span className="text-base font-sans font-normal text-slate">por persona</span>
       </p>
-      {t.monto_final_con_descuento < t.monto_por_persona && (
+      {hayDescuento && (
         <p className="text-sm text-slate mt-1">
           <span className="line-through">{formatoColones(t.monto_por_persona)}</span> con
           descuento activo
         </p>
       )}
-      <p className="text-xs text-slate/60 mt-2">Vigente hasta el {vence}.</p>
+      <p className="text-xs text-slate/60 mt-2">
+        {hayDescuento ? 'Precio con descuento vigente' : 'Tarifa vigente'} hasta el {vence}.
+      </p>
     </div>
   )
 }

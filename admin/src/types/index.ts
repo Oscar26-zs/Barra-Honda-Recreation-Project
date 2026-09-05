@@ -16,6 +16,8 @@ export interface Inscripcion {
   fecha_creacion: string
 }
 
+export type Genero = 'Hombre' | 'Mujer'
+
 export interface Participante {
   id: string
   inscripcion_id: string
@@ -23,6 +25,7 @@ export interface Participante {
   nombre: string
   apellidos: string
   talla_camisa: string
+  genero: Genero
 }
 
 export interface Tarifa {
