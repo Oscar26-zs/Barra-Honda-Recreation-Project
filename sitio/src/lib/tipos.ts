@@ -8,11 +8,11 @@ export type EstadoInscripcion = 'pendiente' | 'aprobada' | 'rechazada'
 
 /**
  * Known Gap #3 (research.md §5): los valores exactos de `talla_camisa` no están fijados
- * en el spec ni en el modelo compartido. Se usa el set estándar XS–XXL como valor por
- * defecto; ajustar aquí y en el <select> de PanelParticipante cuando el propietario lo
- * confirme.
+ * en el spec ni en el modelo compartido. Set de jersey XS–4XL (confirmado por el
+ * propietario). La columna `participantes.talla_camisa` es text sin CHECK, así que
+ * ampliar esta lista no requiere migración.
  */
-export const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const
+export const TALLAS_CAMISA = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'] as const
 export type TallaCamisa = (typeof TALLAS_CAMISA)[number]
 
 /** Género del participante. Columna `participantes.genero CHECK (genero IN ('Hombre','Mujer'))`

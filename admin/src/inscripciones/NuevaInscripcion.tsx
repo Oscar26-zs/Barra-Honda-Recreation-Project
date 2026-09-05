@@ -8,17 +8,19 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 
-const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+const TALLAS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
+const GENEROS = ['Hombre', 'Mujer'] as const
 
 interface ParticipanteForm {
   cedula: string
   nombre: string
   apellidos: string
   talla_camisa: string
+  genero: '' | (typeof GENEROS)[number]
 }
 
 function participanteVacio(): ParticipanteForm {
-  return { cedula: '', nombre: '', apellidos: '', talla_camisa: 'M' }
+  return { cedula: '', nombre: '', apellidos: '', talla_camisa: 'M', genero: '' }
 }
 
 export default function NuevaInscripcion() {
@@ -50,7 +52,7 @@ export default function NuevaInscripcion() {
     nombre.trim() !== '' &&
     telefono.trim() !== '' &&
     correo.trim() !== '' &&
-    participantes.every((p) => p.cedula.trim() && p.nombre.trim() && p.apellidos.trim() && p.talla_camisa)
+    participantes.every((p) => p.cedula.trim() && p.nombre.trim() && p.apellidos.trim() && p.talla_camisa && p.genero)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -87,6 +89,7 @@ export default function NuevaInscripcion() {
         nombre: p.nombre.trim(),
         apellidos: p.apellidos.trim(),
         talla_camisa: p.talla_camisa,
+        genero: p.genero as 'Hombre' | 'Mujer',
       })),
       urlComprobante,
     })
@@ -234,6 +237,18 @@ export default function NuevaInscripcion() {
                         className="h-9 rounded-xl border border-[var(--color-input)] bg-white px-3 text-sm focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:outline-none"
                       >
                         {TALLAS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[var(--color-foreground)]">Género</label>
+                      <select
+                        value={p.genero}
+                        onChange={(e) => actualizarParticipante(i, 'genero', e.target.value)}
+                        disabled={enviando}
+                        className="h-9 rounded-xl border border-[var(--color-input)] bg-white px-3 text-sm focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:outline-none"
+                      >
+                        <option value="">Seleccione…</option>
+                        {GENEROS.map((g) => <option key={g} value={g}>{g}</option>)}
                       </select>
                     </div>
                   </div>

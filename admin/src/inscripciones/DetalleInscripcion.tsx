@@ -213,6 +213,7 @@ export default function DetalleInscripcion() {
                     <div className="flex gap-4 text-xs text-[var(--color-muted-foreground)]">
                       <span>Cédula: {p.cedula}</span>
                       <span>Talla: {p.talla_camisa}</span>
+                      {p.genero && <span>Género: {p.genero}</span>}
                     </div>
                   </div>
                 ))}
