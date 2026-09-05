@@ -16,6 +16,7 @@ import type { Participante, Responsable, ResultadoCrearInscripcion } from '../..
 import { formatoColones } from '../../lib/tipos'
 import Stepper from './inscripcion/Stepper'
 import PasoResponsable, {
+  MAX_PARTICIPANTES,
   type ErroresResponsable,
 } from './inscripcion/PasoResponsable'
 import PasoParticipantes from './inscripcion/PasoParticipantes'
@@ -50,6 +51,9 @@ export default function FormularioInscripcion() {
 
   const [responsable, setResponsable] = useState<Responsable>(responsableVacio)
   const [cantidad, setCantidad] = useState(1)
+  // Texto crudo del input para permitir borrarlo por completo en móvil; `cantidad`
+  // solo se actualiza cuando el texto es un número válido (≥ 1).
+  const [cantidadTexto, setCantidadTexto] = useState('1')
   const [participantes, setParticipantes] = useState<Participante[]>([participanteVacio()])
   const [activo, setActivo] = useState(0)
   const [comprobante, setComprobante] = useState<File | null>(null)
@@ -67,6 +71,13 @@ export default function FormularioInscripcion() {
   }, [])
 
   useEffect(() => {
+    const n = Math.floor(Number(cantidadTexto))
+    if (cantidadTexto.trim() && Number.isFinite(n) && n >= 1) {
+      setCantidad(Math.min(MAX_PARTICIPANTES, n))
+    }
+  }, [cantidadTexto])
+
+  useEffect(() => {
     setParticipantes((prev) => sincronizar(prev, cantidad))
     setActivo((a) => Math.min(a, cantidad - 1))
   }, [cantidad])
@@ -82,6 +93,10 @@ export default function FormularioInscripcion() {
     if (!responsable.nombre_contacto.trim()) e.nombre_contacto = 'El nombre es obligatorio.'
     if (!responsable.telefono_contacto.trim()) e.telefono_contacto = 'El teléfono es obligatorio.'
     e.correo_contacto = validarCorreo(responsable.correo_contacto)
+    const n = Math.floor(Number(cantidadTexto))
+    if (!cantidadTexto.trim()) e.cantidad = 'Indica cuántas personas se inscriben.'
+    else if (!Number.isFinite(n) || n <= 0) e.cantidad = 'Debe ser un número mayor que 0.'
+    else if (n > MAX_PARTICIPANTES) e.cantidad = `Máximo ${MAX_PARTICIPANTES} personas.`
     const limpio = Object.fromEntries(Object.entries(e).filter(([, v]) => v)) as ErroresResponsable
     setErrResp(limpio)
     return Object.keys(limpio).length === 0
@@ -186,8 +201,8 @@ export default function FormularioInscripcion() {
             <PasoResponsable
               responsable={responsable}
               onResponsable={setResponsable}
-              cantidad={cantidad}
-              onCantidad={setCantidad}
+              cantidadTexto={cantidadTexto}
+              onCantidadTexto={setCantidadTexto}
               errores={errResp}
               onSiguiente={irAParticipantes}
             />
