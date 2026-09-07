@@ -6,14 +6,19 @@
 // La invoca el PANEL ADMINISTRATIVO (spec 002) tras aprobar/rechazar, con:
 //   POST { "inscripcion_id": "<uuid>", "nuevo_estado": "aprobada" | "rechazada" }
 //
-// Secretos (Dashboard → Edge Functions → Manage secrets, o `supabase secrets set`):
-//   RESEND_API_KEY   (obligatorio)  — clave de Resend. NUNCA en código ni en el repo.
-//   MAIL_FROM        (opcional)     — remitente. Ej: "MTB El Valle <no-reply@tu-dominio.com>".
-//                                     Debe ser un dominio verificado en Resend.
-//                                     Por defecto usa el remitente de prueba de Resend
-//                                     (onboarding@resend.dev), que SOLO entrega al correo
-//                                     con el que se creó la cuenta de Resend.
-//   SITE_URL         (opcional)     — URL pública del sitio, para el enlace "Consultar".
+// Proveedor de correo: Brevo (https://www.brevo.com) — API transaccional.
+// No requiere dominio propio: basta verificar UNA dirección remitente
+// (un solo clic en el correo de confirmación de Brevo).
+//
+// Secretos (Dashboard → Project Settings → Edge Functions → Add new secret,
+// o `supabase secrets set`):
+//   BREVO_API_KEY     (obligatorio)  — clave "SMTP & API" de Brevo (empieza con "xkeysib-").
+//                                      NUNCA en el código ni en el repo.
+//   MAIL_FROM_EMAIL   (obligatorio)  — dirección remitente YA VERIFICADA en Brevo.
+//                                      Ej: recreativabarrahonda@gmail.com
+//   MAIL_FROM_NAME    (opcional)     — nombre visible del remitente.
+//                                      Por defecto: "MTB El Valle del Nacaome".
+//   SITE_URL          (opcional)     — URL pública del sitio, para el enlace "Consultar".
 //
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automáticamente.
 // ----------------------------------------------------------------------------
@@ -98,13 +103,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405)
 
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  const MAIL_FROM = Deno.env.get('MAIL_FROM') ?? 'MTB El Valle <onboarding@resend.dev>'
+  const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY')
+  const MAIL_FROM_EMAIL = Deno.env.get('MAIL_FROM_EMAIL')
+  const MAIL_FROM_NAME = Deno.env.get('MAIL_FROM_NAME') ?? 'MTB El Valle del Nacaome'
   const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://mtbelvalle.example'
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
   const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-  if (!RESEND_API_KEY) return json({ error: 'Falta el secreto RESEND_API_KEY' }, 500)
+  if (!BREVO_API_KEY) return json({ error: 'Falta el secreto BREVO_API_KEY' }, 500)
+  if (!MAIL_FROM_EMAIL) return json({ error: 'Falta el secreto MAIL_FROM_EMAIL' }, 500)
 
   let body: Payload
   try {
@@ -130,27 +137,33 @@ Deno.serve(async (req: Request) => {
   const ins = filas[0]
   if (!ins) return json({ error: 'Inscripción no encontrada' }, 404)
 
-  // 2. Enviar el correo con Resend.
+  // 2. Enviar el correo con Brevo (API transaccional).
   const { subject, html } = plantilla(ins, nuevo_estado, SITE_URL)
-  const resend = await fetch('https://api.resend.com/emails', {
+  const brevo = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'api-key': BREVO_API_KEY,
       'Content-Type': 'application/json',
+      accept: 'application/json',
     },
     body: JSON.stringify({
-      from: MAIL_FROM,
-      to: [ins.correo_contacto],
+      sender: { name: MAIL_FROM_NAME, email: MAIL_FROM_EMAIL },
+      to: [{ email: ins.correo_contacto, name: ins.nombre_contacto }],
       subject,
-      html,
+      htmlContent: html,
     }),
   })
 
-  const data = await resend.json().catch(() => ({}))
-  if (!resend.ok) {
+  const data = await brevo.json().catch(() => ({}))
+  if (!brevo.ok) {
     // El fallo de correo NO revierte el cambio de estado (spec 002, HU4).
-    return json({ ok: false, email_error: data, status: resend.status }, 502)
+    return json({ ok: false, email_enviado: false, email_error: data, status: brevo.status }, 502)
   }
 
-  return json({ ok: true, id: (data as { id?: string }).id, folio: ins.folio })
+  return json({
+    ok: true,
+    email_enviado: true,
+    id: (data as { messageId?: string }).messageId,
+    folio: ins.folio,
+  })
 })
