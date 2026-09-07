@@ -37,6 +37,11 @@ export default function ConfirmacionEnvio({
         correo cuando el equipo revise el comprobante.
       </p>
 
+      <p className="mt-3 text-xs text-slate/70 leading-relaxed max-w-md mx-auto">
+        Ese correo puede llegar a la carpeta de <strong>spam</strong>.
+        Si no lo ves en tu bandeja de entrada, revisá ahí y márcalo como “No es spam”.
+      </p>
+
       <a
         href="/consultar"
         className="mt-6 inline-block px-6 py-2.5 border border-river/40 text-river hover:bg-river hover:text-white font-poster font-bold text-xs tracking-[0.2em] uppercase transition-colors"
