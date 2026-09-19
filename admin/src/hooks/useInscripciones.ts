@@ -13,40 +13,49 @@ interface CrearInscripcionManualParams {
   urlComprobante?: string | null
 }
 
+export const PAGINAS_DISPONIBLES = [10, 15, 20, 25] as const
+
 export function useInscripciones() {
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([])
   const [cargando, setCargando] = useState(true)
   const [filtro, setFiltro] = useState<FiltroEstado>('todas')
   const [busqueda, setBusqueda] = useState('')
+  const [pagina, setPagina] = useState(1)
+  const [porPagina, setPorPagina] = useState<number>(PAGINAS_DISPONIBLES[1])
+  const [total, setTotal] = useState(0)
 
   const cargar = useCallback(async () => {
     setCargando(true)
     let query = supabase
       .from('inscripciones')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('fecha_creacion', { ascending: false })
 
     if (filtro !== 'todas') {
       query = query.eq('estado', filtro)
     }
 
-    const { data } = await query
-    const lista = (data ?? []) as Inscripcion[]
-
     if (busqueda.trim()) {
-      const q = busqueda.toLowerCase()
-      setInscripciones(lista.filter(
-        (i) =>
-          i.folio?.toLowerCase().includes(q) ||
-          i.nombre_contacto?.toLowerCase().includes(q)
-      ))
-    } else {
-      setInscripciones(lista)
+      const q = busqueda.trim()
+      query = query.or(`folio.ilike.%${q}%,nombre_contacto.ilike.%${q}%`)
     }
+
+    const desde = (pagina - 1) * porPagina
+    const hasta = desde + porPagina - 1
+    query = query.range(desde, hasta)
+
+    const { data, count } = await query
+    setInscripciones((data ?? []) as Inscripcion[])
+    setTotal(count ?? 0)
     setCargando(false)
-  }, [filtro, busqueda])
+  }, [filtro, busqueda, pagina, porPagina])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // Volver a la primera página cuando cambian filtro, búsqueda o tamaño de página
+  useEffect(() => { setPagina(1) }, [filtro, busqueda, porPagina])
+
+  const totalPaginas = Math.max(1, Math.ceil(total / porPagina))
 
   async function cambiarEstado(
     id: string,
@@ -123,24 +132,19 @@ export function useInscripciones() {
     return { error: null }
   }
 
-  // Búsqueda client-side por folio/cédula/nombre sobre los datos ya cargados
-  const inscripcionesFiltradas = busqueda.trim()
-    ? inscripciones.filter((i) => {
-        const q = busqueda.toLowerCase()
-        return (
-          i.folio?.toLowerCase().includes(q) ||
-          i.nombre_contacto?.toLowerCase().includes(q)
-        )
-      })
-    : inscripciones
-
   return {
-    inscripciones: inscripcionesFiltradas,
+    inscripciones,
     cargando,
     filtro,
     setFiltro,
     busqueda,
     setBusqueda,
+    pagina,
+    setPagina,
+    porPagina,
+    setPorPagina,
+    total,
+    totalPaginas,
     cambiarEstado,
     crearInscripcionManual,
     recargar: cargar,

@@ -9,6 +9,7 @@ import { useInscripciones } from '../hooks/useInscripciones'
 import BuscadorInscripciones from './BuscadorInscripciones'
 import FiltrosInscripciones from './FiltrosInscripciones'
 import ExportarExcel from './ExportarExcel'
+import Paginacion from './Paginacion'
 
 function EstadoBadge({ estado }: { estado: EstadoInscripcion }) {
   const labels: Record<EstadoInscripcion, string> = {
@@ -50,6 +51,12 @@ export default function ListaInscripciones() {
     setFiltro,
     busqueda,
     setBusqueda,
+    pagina,
+    setPagina,
+    porPagina,
+    setPorPagina,
+    total,
+    totalPaginas,
   } = useInscripciones()
 
   return (
@@ -58,7 +65,7 @@ export default function ListaInscripciones() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-extrabold text-[var(--color-foreground)]">Inscripciones</h1>
         <div className="flex gap-2">
-          <ExportarExcel inscripciones={inscripciones} />
+          <ExportarExcel filtro={filtro} busqueda={busqueda} />
           <Button size="sm" onClick={() => navigate('/inscripciones/nueva')}>
             <PlusCircle size={14} />
             {isMobile ? '' : 'Registrar inscripción'}
@@ -126,6 +133,17 @@ export default function ListaInscripciones() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {total > 0 && (
+        <Paginacion
+          pagina={pagina}
+          totalPaginas={totalPaginas}
+          onCambiarPagina={setPagina}
+          porPagina={porPagina}
+          onCambiarPorPagina={setPorPagina}
+          total={total}
+        />
       )}
     </div>
   )

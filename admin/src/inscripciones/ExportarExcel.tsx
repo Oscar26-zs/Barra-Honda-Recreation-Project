@@ -4,13 +4,15 @@ import { Button } from '../components/ui/button'
 import { supabase } from '../lib/supabase'
 import type { Inscripcion, Participante } from '../types'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import type { FiltroEstado } from '../hooks/useInscripciones'
 
 // Known Gap #1: pendiente confirmar con propietario si estilo es sólido (primary)
 // o tint (secondary) en desktop. Mobile muestra "Exportar" abreviado.
 // Por ahora se usa 'default' (sólido azul) alineado con las capturas mobile.
 
 interface ExportarExcelProps {
-  inscripciones: Inscripcion[]
+  filtro: FiltroEstado
+  busqueda: string
 }
 
 // Se genera un .xlsx real (no CSV) para poder aplicar formato: cabecera con color,
@@ -67,13 +69,31 @@ function construirHoja(XLSX: any, cabecera: string[], filas: (string | number)[]
   return ws
 }
 
-export default function ExportarExcel({ inscripciones }: ExportarExcelProps) {
+export default function ExportarExcel({ filtro, busqueda }: ExportarExcelProps) {
   const { isMobile } = useBreakpoint()
   const [ocupado, setOcupado] = useState(false)
 
   async function exportar() {
     setOcupado(true)
     try {
+      // Trae TODO el dataset que cumple el filtro/búsqueda activos (sin paginar),
+      // independientemente de la página que se esté viendo en pantalla.
+      let query = supabase
+        .from('inscripciones')
+        .select('*')
+        .order('fecha_creacion', { ascending: false })
+
+      if (filtro !== 'todas') {
+        query = query.eq('estado', filtro)
+      }
+      if (busqueda.trim()) {
+        const q = busqueda.trim()
+        query = query.or(`folio.ilike.%${q}%,nombre_contacto.ilike.%${q}%`)
+      }
+
+      const { data } = await query
+      const inscripciones = (data ?? []) as Inscripcion[]
+
       // Carga diferida: la librería (~600 kB) solo se descarga al exportar.
       const XLSX = await import('xlsx-js-style')
 
