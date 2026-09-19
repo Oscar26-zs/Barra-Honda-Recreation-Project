@@ -8,31 +8,28 @@ import Kicker from '../Kicker.astro'
 import SectionGlow from '../SectionGlow.astro'
 import AccordionRow from '../AccordionRow.astro'
 
-const U = 'https://images.unsplash.com/photo-'
-const q = '?w=700&h=500&fit=crop&auto=format'
-
 const actividades = [
   {
     titulo: 'Concierto en vivo — Plaza de Deportes',
-    foto: `${U}1493225457124-a3eb161ffa5f${q}`,
+    foto: 'https://res.cloudinary.com/dxrzwnjee/image/upload/v1789779383/0621ce4c-8971-4605-83fd-a524dd6b6a45.png',
     texto:
       'Domingo, agrupaciones de la zona en la plaza de deportes de Barra Honda. Entrada libre para toda la familia.',
   },
   {
     titulo: 'Ternerada nocturna — Plaza de Toros',
-    foto: `${U}1516214104703-d870798883c5${q}`,
+    foto: 'https://res.cloudinary.com/dxrzwnjee/image/upload/v1789779264/0869d49a-b592-4812-a725-a3ca0e49ce2f.png',
     texto:
       'Monta de toros y tradición guanacasteca en la plaza de toros del pueblo, con ventas de comida típica.',
   },
   {
     titulo: 'Tours guiados — Parque Nacional',
-    foto: `${U}1441974231531-c6227db76b6e${q}`,
+    foto: 'https://res.cloudinary.com/dxrzwnjee/image/upload/v1789827126/8be49293-7146-4447-9675-23abc09c805d.png',
     texto:
       'Recorridos a las cuevas del Parque Nacional Barra Honda con guías locales. Cupo limitado, se reserva el día del evento.',
   },
   {
     titulo: 'Feria de emprendedores',
-    foto: `${U}1555529669-e69e7aa0ba9a${q}`,
+    foto: 'https://res.cloudinary.com/dxrzwnjee/image/upload/v1789826963/e2fbef23-cace-4998-9ed8-bcce864161a6.png',
     texto:
       'Productoras y productores de Nicoya con artesanía, café y repostería. Domingo a partir de las 9:00 a.m.',
   },
@@ -72,7 +69,5 @@ const actividades = [
         ))
       }
     </div>
-
-    <p class="mt-6 text-xs text-slate/60">Imágenes de referencia — se reemplazan por fotografía oficial del evento.</p>
-  </div>
+ </div>
 </section>
