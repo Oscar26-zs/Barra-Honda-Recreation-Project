@@ -1,45 +1,23 @@
 <!--
 INFORME DE IMPACTO DE SINCRONIZACIÓN
 =====================================
-Cambio de versión: 2.0.0 → 2.0.1 (PARCHE — corrección de coherencia interna)
+Cambio de versión: 2.0.1 → 2.1.0 (MENOR — ampliación material de la guía existente)
 
-Corrección aplicada:
-  - Se resolvió una contradicción entre el Principio VIII y la sección "Requisitos de
-    Seguridad" respecto al acceso público a la tabla `tarifas`.
-    * Estado anterior (contradictorio): el Principio VIII, regla 1, indicaba que el
-      sitio público PUEDE mostrar la tarifa vigente para UX, pero "Requisitos de
-      Seguridad" declaraba que el rol público NO tenía ningún acceso a la tabla
-      `tarifas`, sin proveer ningún mecanismo técnico que permitiera resolver esa
-      contradicción.
-    * Corrección: se introduce la RPC de solo lectura `obtener_tarifa_vigente()`,
-      siguiendo el mismo patrón ya aprobado para la consulta de estado (Principio IX).
-      Esta RPC es invocable con la clave `anon` vía `supabase.rpc(...)` y devuelve
-      únicamente la modalidad, monto por persona y fecha de fin de vigencia de la
-      tarifa activa en el momento de la llamada. No expone historial, tarifas
-      futuras/pasadas ni ninguna otra columna. La tabla `tarifas` sigue SIN tener
-      política RLS de SELECT para el rol público; el único camino de lectura pública
-      es esta RPC. El cálculo vinculante del monto (trigger/función PostgreSQL en el
-      INSERT) no se modifica en absoluto.
-  - Aclaración de nomenclatura: el Principio VIII usaba "Madrugada" / "Regular" como
-    ejemplos de `modalidad`; el alcance original mencionaba "promocional" / "regular".
-    Se añade una nota explícita indicando que los valores definitivos de `modalidad`
-    DEBEN fijarse en `spec.md` antes de la implementación.
+Motivo: spec 003-edicion-reserva-pago (reserva con 50 % y pago del saldo). Aprobado por el
+propietario el 2026-10-07.
 
-Principios modificados en esta enmienda:
-  - VIII. Tarifas con Promoción por Tiempo Limitado: regla 1 ampliada para mencionar
-    `obtener_tarifa_vigente()` como el mecanismo formal de lectura pública; nota de
-    nomenclatura añadida.
+Principios modificados:
+  - II. Seguridad de Datos Públicos: se añade la SEGUNDA excepción controlada — la RPC
+    `subir_comprobante_saldo(p_folio, p_cedula, p_url)` (SECURITY DEFINER, clave `anon`),
+    que solo adjunta el comprobante del saldo y cambia `estado_pago` de `saldo_pendiente`
+    a `saldo_en_revision`. Misma regla de folio + cédula exactos y respuesta genérica.
+  - VI. Flujo de Notificaciones: además de aprobada/rechazada, la Edge Function envía la
+    variante "Reserva confirmada (saldo pendiente)" y el correo "Pago completo".
 Secciones modificadas:
-  - Requisitos de Seguridad — ítem "Tabla `tarifas` — acceso restringido": actualizado
-    para reflejar que el único acceso público permitido es vía `obtener_tarifa_vigente()`,
-    y que la tabla sigue sin tener SELECT directo ni política RLS pública.
-TODOs pendientes:
-  RESUELTO 2026-09-02: los valores de `modalidad` ya están fijados en
-  `spec.md` → "Modalidades de tarifa (valores fijos)" y en
-  `_shared/data-model.md` → "Valores de `modalidad`" como
-  `Promocional` / `Regular`. No quedan TODOs abiertos en esta enmienda.
+  - Requisitos de Seguridad: ítem nuevo para la RPC de subida del saldo.
+Specs afectados: 001 (consulta pública), 002 (detalle/registro manual), _shared/data-model.md.
+TODOs pendientes: ninguno.
 -->
-
 # Constitución — Recreativa Barra Honda
 
 ## Principios Fundamentales
@@ -106,6 +84,13 @@ controlada descrita a continuación.
   Esta RPC es el ÚNICO camino por el que el público puede obtener datos de una
   inscripción; no existe ningún endpoint ni política que permita listar o enumerar
   inscripciones.
+- **Segunda excepción (escritura acotada, v2.1.0)**: el pago del saldo de una reserva se
+  registra mediante la RPC `subir_comprobante_saldo(p_folio, p_cedula, p_url)` con
+  `SECURITY DEFINER`, invocada con la clave `anon`. SOLO puede: (a) asociar la ruta del
+  comprobante del saldo ya subido al bucket privado, y (b) cambiar `estado_pago` de
+  `saldo_pendiente` a `saldo_en_revision`, y únicamente cuando folio + cédula coinciden
+  exactamente con una inscripción `aprobada`. No devuelve datos y responde de forma
+  genérica ante cualquier fallo. Ningún otro campo puede modificarse por esta vía.
 - Ningún código del lado del cliente DEBE exponer datos de inscripciones de otros usuarios
   más allá de la confirmación del envío exitoso y la consulta de estado propia (vía RPC).
 
@@ -175,6 +160,10 @@ disparar una notificación por correo al solicitante mediante Resend.
   NO DEBE llamar a Resend directamente.
 - Las plantillas de correo DEBEN comunicar claramente el resultado (aprobación o rechazo)
   y cualquier paso siguiente relevante.
+- **v2.1.0**: para inscripciones con reserva del 50 %, el correo de aprobación DEBE indicar
+  el saldo pendiente y cómo pagarlo; al quedar el pago completo (`estado_pago` →
+  `completo`) se DEBE enviar el correo "Pago completo". Ambos los emite la misma Edge
+  Function.
 
 **Justificación**: Los solicitantes necesitan retroalimentación oportuna sobre el estado de
 su inscripción. Centralizar el envío de correos en la Edge Function mantiene la clave de
@@ -340,6 +329,10 @@ estar presentes antes de que cualquier funcionalidad se considere completa.
   ÚNICO camino de lectura pública sobre inscripciones. Debe responder de forma genérica en
   caso de no encontrar coincidencia; no debe indicar si el fallo fue en el folio o en la
   cédula.
+- **RPC `subir_comprobante_saldo` (v2.1.0)**: única escritura pública posterior al alta.
+  Mismas garantías que la consulta de estado (folio + cédula exactos, respuesta genérica,
+  sin enumeración); valida el formato de la ruta del archivo y no permite modificar ningún
+  otro dato (ver Principio II).
 - **Tabla `tarifas` — acceso restringido**: la tabla `tarifas` NO tiene política RLS de
   SELECT para el rol público, ni ningún acceso directo desde el cliente. Solo el rol admin
   puede leer y modificar la tabla directamente. El único acceso de lectura pública
@@ -406,4 +399,4 @@ proyecto web de la Recreativa Barra Honda.
 - Cualquier conflicto aparente entre la constitución y un spec/plan DEBE resolverse a favor
   de la constitución, salvo que se apruebe una enmienda.
 
-**Versión**: 2.0.1 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-08-23
+**Versión**: 2.1.0 | **Ratificada**: 2026-08-22 | **Última enmienda**: 2026-10-07

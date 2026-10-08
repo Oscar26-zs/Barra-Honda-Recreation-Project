@@ -387,10 +387,9 @@ Las demás entidades que este módulo opera están definidas completamente en
 - Gestión de la tarifa base (crear, editar o desactivar el monto de una categoría de tarifa)
   — se administra directamente en la base de datos. La gestión de **Descuentos** sobre tarifas
   existentes **SÍ** está en el alcance de este módulo (ver Historia de Usuario 5).
-- **Edición** de inscripciones existentes (modificar los datos de un responsable o
-  participantes ya registrados) sigue fuera de alcance. El registro manual (HU6) solo
-  **crea** inscripciones nuevas desde el panel; una vez creadas, únicamente se les puede
-  cambiar el estado (aprobar/rechazar), igual que a las públicas.
+- ~~Edición de inscripciones existentes~~ → **movida a alcance** por
+  [003-edicion-reserva-pago](../003-edicion-reserva-pago/spec.md) (2026-10-07): edición de
+  datos del responsable y participantes existentes, y reserva con 50 % del pago.
 
 ---
 

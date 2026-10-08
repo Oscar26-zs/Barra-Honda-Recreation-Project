@@ -7,6 +7,9 @@ import { useInscripciones } from '../hooks/useInscripciones'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { LABEL_TIPO_PAGO } from '../lib/pago'
+import { cn } from '../lib/utils'
+import type { TipoPago } from '../types'
 
 const TALLAS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
 const GENEROS = ['Hombre', 'Mujer'] as const
@@ -32,6 +35,7 @@ export default function NuevaInscripcion() {
   const [correo, setCorreo] = useState('')
   const [participantes, setParticipantes] = useState<ParticipanteForm[]>([participanteVacio()])
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
+  const [tipoPago, setTipoPago] = useState<TipoPago | ''>('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,6 +56,7 @@ export default function NuevaInscripcion() {
     nombre.trim() !== '' &&
     telefono.trim() !== '' &&
     correo.trim() !== '' &&
+    tipoPago !== '' &&
     participantes.every((p) => p.cedula.trim() && p.nombre.trim() && p.apellidos.trim() && p.talla_camisa && p.genero)
 
   async function handleSubmit(e: FormEvent) {
@@ -92,6 +97,7 @@ export default function NuevaInscripcion() {
         genero: p.genero as 'Hombre' | 'Mujer',
       })),
       urlComprobante,
+      tipoPago: tipoPago as TipoPago,
     })
 
     setEnviando(false)
@@ -253,6 +259,43 @@ export default function NuevaInscripcion() {
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tipo de pago (spec 003, FR-044) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tipo de pago</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(['completo', 'reserva'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  disabled={enviando}
+                  onClick={() => setTipoPago(t)}
+                  className={cn(
+                    'rounded-xl border px-4 py-3 text-left transition-colors',
+                    tipoPago === t
+                      ? 'border-[var(--color-primary)] bg-[var(--color-secondary)]'
+                      : 'border-[var(--color-input)] bg-white hover:opacity-80'
+                  )}
+                >
+                  <p className={cn(
+                    'text-sm font-semibold',
+                    tipoPago === t ? 'text-[var(--color-primary)]' : 'text-[var(--color-foreground)]'
+                  )}>
+                    {LABEL_TIPO_PAGO[t]}
+                  </p>
+                  <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">
+                    {t === 'completo'
+                      ? 'Se pagó el 100 % del monto.'
+                      : 'Se pagó el 50 %; el saldo queda pendiente.'}
+                  </p>
+                </button>
               ))}
             </div>
           </CardContent>

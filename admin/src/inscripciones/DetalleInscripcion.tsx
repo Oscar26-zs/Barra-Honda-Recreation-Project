@@ -1,19 +1,55 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ZoomIn } from 'lucide-react'
+import { ArrowLeft, Pencil, ZoomIn } from 'lucide-react'
+import imageCompression from 'browser-image-compression'
 import { supabase } from '../lib/supabase'
 import type { Participante, Inscripcion } from '../types/index'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog'
+import {
+  LABEL_ESTADO_PAGO,
+  LABEL_TIPO_PAGO,
+  colones,
+  montoPagado,
+  montoReserva,
+  saldoPendiente,
+} from '../lib/pago'
 
-type ModalEstado = 'none' | 'aprobar' | 'rechazar'
+type ModalEstado =
+  | 'none'
+  | 'aprobar'
+  | 'rechazar'
+  | 'confirmar_saldo'
+  | 'rechazar_saldo'
+  | 'registrar_saldo'
 
 const LABELS: Record<string, string> = {
   pendiente: 'Pendiente',
   aprobada: 'Aprobada',
   rechazada: 'Rechazada',
+}
+
+const claseTextarea =
+  'w-full min-h-[100px] rounded-xl border border-[var(--color-input)] px-3 py-2.5 text-sm resize-none bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]'
+
+async function urlFirmada(ruta: string | null): Promise<string | null> {
+  if (!ruta) return null
+  const { data } = await supabase.storage.from('comprobantes').createSignedUrl(ruta, 3600)
+  return data?.signedUrl ?? null
+}
+
+async function notificar(inscripcionId: string, evento: 'aprobada' | 'rechazada' | 'pago_completo', motivo?: string) {
+  try {
+    const { data } = await supabase.functions.invoke('notificar-inscripcion', {
+      body: { inscripcion_id: inscripcionId, nuevo_estado: evento, motivo: motivo ?? null },
+    })
+    return data?.email_enviado !== false
+  } catch {
+    // Fallo de correo no revierte el cambio (Caso Límite de 002 / 003)
+    return false
+  }
 }
 
 export default function DetalleInscripcion() {
@@ -23,12 +59,14 @@ export default function DetalleInscripcion() {
   const [inscripcion, setInscripcion] = useState<Inscripcion | null>(null)
   const [participantes, setParticipantes] = useState<Participante[]>([])
   const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null)
+  const [comprobanteSaldoUrl, setComprobanteSaldoUrl] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [modal, setModal] = useState<ModalEstado>('none')
   const [motivo, setMotivo] = useState('')
+  const [archivoSaldo, setArchivoSaldo] = useState<File | null>(null)
   const [procesando, setProcesando] = useState(false)
-  const [avisoEmail, setAvisoEmail] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => { cargar() }, [id])
 
@@ -46,7 +84,8 @@ export default function DetalleInscripcion() {
       return
     }
 
-    setInscripcion(data as Inscripcion)
+    const ins = data as Inscripcion
+    setInscripcion(ins)
 
     const { data: parts } = await supabase
       .from('participantes')
@@ -54,12 +93,8 @@ export default function DetalleInscripcion() {
       .eq('inscripcion_id', id)
     setParticipantes((parts ?? []) as Participante[])
 
-    if (data.url_comprobante) {
-      const { data: signed } = await supabase.storage
-        .from('comprobantes')
-        .createSignedUrl(data.url_comprobante as string, 3600)
-      if (signed) setComprobanteUrl(signed.signedUrl)
-    }
+    setComprobanteUrl(await urlFirmada(ins.url_comprobante))
+    setComprobanteSaldoUrl(await urlFirmada(ins.url_comprobante_saldo))
 
     setCargando(false)
   }
@@ -84,30 +119,91 @@ export default function DetalleInscripcion() {
       return
     }
 
-    let emailEnviado = false
-    try {
-      const { data: fnData } = await supabase.functions.invoke('notificar-inscripcion', {
-        body: { inscripcion_id: inscripcion.id, nuevo_estado: nuevoEstado, motivo: motivo.trim() || null },
-      })
-      emailEnviado = fnData?.email_enviado !== false
-    } catch { /* fallo de correo no revierte el cambio */ }
+    const emailEnviado = await notificar(inscripcion.id, nuevoEstado, motivo.trim() || undefined)
 
     setModal('none')
     setMotivo('')
     setProcesando(false)
 
     if (!emailEnviado) {
-      setAvisoEmail('Estado actualizado. El correo de notificación no pudo enviarse.')
+      setAviso('Estado actualizado. El correo de notificación no pudo enviarse.')
       await cargar()
     } else {
       navigate('/inscripciones')
     }
   }
 
+  // Acciones sobre el saldo de una reserva aprobada (spec 003, FR-053/FR-054).
+  // UPDATE directo con guardas sobre estado_pago, mismo patrón que confirmarCambio.
+  async function accionSaldo(accion: 'confirmar_saldo' | 'rechazar_saldo' | 'registrar_saldo') {
+    if (!inscripcion) return
+    setProcesando(true)
+    setAviso(null)
+
+    let update: Record<string, unknown>
+    let estadoPrevio: 'saldo_pendiente' | 'saldo_en_revision'
+
+    if (accion === 'rechazar_saldo') {
+      update = { estado_pago: 'saldo_pendiente', motivo_rechazo_saldo: motivo.trim(), url_comprobante_saldo: null }
+      estadoPrevio = 'saldo_en_revision'
+    } else {
+      update = { estado_pago: 'completo', fecha_pago_saldo: new Date().toISOString(), motivo_rechazo_saldo: null }
+      estadoPrevio = accion === 'confirmar_saldo' ? 'saldo_en_revision' : 'saldo_pendiente'
+
+      if (accion === 'registrar_saldo' && archivoSaldo) {
+        try {
+          const comprimido = await imageCompression(archivoSaldo, {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          })
+          const nombreArchivo = `comprobante-saldo-admin-${Date.now()}.${comprimido.name.split('.').pop()}`
+          const { error: upErr } = await supabase.storage.from('comprobantes').upload(nombreArchivo, comprimido)
+          if (upErr) throw upErr
+          update.url_comprobante_saldo = nombreArchivo
+        } catch {
+          setAviso('No se pudo subir el comprobante del saldo. Intenta de nuevo o regístralo sin comprobante.')
+          setProcesando(false)
+          return
+        }
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('inscripciones')
+      .update(update)
+      .eq('id', inscripcion.id)
+      .eq('estado', 'aprobada')
+      .eq('estado_pago', estadoPrevio)
+      .select('id')
+
+    if (error || !data?.length) {
+      setAviso('No se pudo actualizar el pago. Recarga la página: es posible que ya haya cambiado.')
+      setProcesando(false)
+      return
+    }
+
+    if (accion !== 'rechazar_saldo') {
+      const emailEnviado = await notificar(inscripcion.id, 'pago_completo')
+      setAviso(emailEnviado
+        ? 'Pago completo registrado. Se envió el correo al responsable.'
+        : 'Pago completo registrado. El correo de notificación no pudo enviarse.')
+    } else {
+      setAviso('Comprobante del saldo rechazado. El responsable verá el motivo al consultar su inscripción.')
+    }
+
+    setModal('none')
+    setMotivo('')
+    setArchivoSaldo(null)
+    setProcesando(false)
+    await cargar()
+  }
+
   function cerrarModal() {
     if (procesando) return
     setModal('none')
     setMotivo('')
+    setArchivoSaldo(null)
   }
 
   if (cargando) {
@@ -129,6 +225,9 @@ export default function DetalleInscripcion() {
   }
 
   const esPendiente = inscripcion.estado === 'pendiente'
+  const esReserva = inscripcion.tipo_pago === 'reserva'
+  const saldo = saldoPendiente(inscripcion)
+  const saldoReserva = inscripcion.monto_esperado - montoReserva(inscripcion.monto_esperado)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
@@ -145,13 +244,32 @@ export default function DetalleInscripcion() {
             Detalle de inscripción
           </h1>
           <Badge variant={inscripcion.estado}>{LABELS[inscripcion.estado]}</Badge>
+          {inscripcion.estado_pago !== 'completo' && (
+            <Badge variant={inscripcion.estado_pago}>{LABEL_ESTADO_PAGO[inscripcion.estado_pago]}</Badge>
+          )}
+          {inscripcion.estado !== 'rechazada' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
+              onClick={() => navigate(`/inscripciones/${inscripcion.id}/editar`)}
+            >
+              <Pencil size={14} />
+              Editar
+            </Button>
+          )}
         </div>
         <p className="text-sm font-semibold text-[var(--color-primary)] mt-0.5">{inscripcion.folio}</p>
+        {inscripcion.fecha_edicion && (
+          <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5">
+            Editada el {new Date(inscripcion.fecha_edicion).toLocaleString('es-CR')}
+          </p>
+        )}
       </div>
 
-      {avisoEmail && (
+      {aviso && (
         <div className="mb-4 p-3 rounded-xl bg-[var(--color-status-pending-bg)] text-[var(--color-status-pending-text)] text-sm">
-          {avisoEmail}
+          {aviso}
         </div>
       )}
 
@@ -169,7 +287,7 @@ export default function DetalleInscripcion() {
                 ['Correo', inscripcion.correo_contacto],
                 ['Modalidad', inscripcion.modalidad_tarifa],
                 ['Personas', String(inscripcion.cantidad_personas)],
-                ['Monto esperado', `₡${inscripcion.monto_esperado?.toLocaleString('es-CR')}`],
+                ['Monto esperado', colones(inscripcion.monto_esperado)],
                 ['Fecha de registro', new Date(inscripcion.fecha_creacion).toLocaleString('es-CR')],
               ].map(([label, val]) => (
                 <div key={label}>
@@ -187,6 +305,68 @@ export default function DetalleInscripcion() {
                   Motivo de rechazo
                 </p>
                 <p className="text-sm text-[var(--color-foreground)]">{inscripcion.motivo_rechazo}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pago (spec 003, FR-048) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pago</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+              {[
+                ['Tipo', LABEL_TIPO_PAGO[inscripcion.tipo_pago]],
+                ['Total', colones(inscripcion.monto_esperado)],
+                ['Pagado', colones(montoPagado(inscripcion))],
+                ['Saldo', colones(saldo)],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <dt className="text-[var(--color-muted-foreground)] text-xs font-semibold uppercase tracking-wide mb-0.5">
+                    {label}
+                  </dt>
+                  <dd className="text-[var(--color-foreground)]">{val}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {esReserva && inscripcion.fecha_pago_saldo && (
+              <p className="mt-3 text-xs text-[var(--color-muted-foreground)]">
+                Saldo pagado el {new Date(inscripcion.fecha_pago_saldo).toLocaleString('es-CR')}
+              </p>
+            )}
+
+            {inscripcion.motivo_rechazo_saldo && inscripcion.estado_pago === 'saldo_pendiente' && (
+              <div className="mt-4 p-3 rounded-xl bg-[var(--color-status-rejected-bg)]">
+                <p className="text-xs font-semibold text-[var(--color-status-rejected-text)] mb-1 uppercase tracking-wide">
+                  Último comprobante del saldo rechazado
+                </p>
+                <p className="text-sm text-[var(--color-foreground)]">{inscripcion.motivo_rechazo_saldo}</p>
+              </div>
+            )}
+
+            {esReserva && inscripcion.estado === 'pendiente' && (
+              <p className="mt-4 text-sm text-[var(--color-muted-foreground)]">
+                Reserva del 50 %: al aprobarla, el responsable recibe un correo con el saldo pendiente.
+              </p>
+            )}
+
+            {inscripcion.estado === 'aprobada' && inscripcion.estado_pago === 'saldo_en_revision' && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button onClick={() => setModal('confirmar_saldo')}>Confirmar saldo</Button>
+                <Button variant="outline" onClick={() => setModal('rechazar_saldo')}>
+                  Rechazar comprobante del saldo
+                </Button>
+              </div>
+            )}
+
+            {inscripcion.estado === 'aprobada' && inscripcion.estado_pago === 'saldo_pendiente' && (
+              <div className="mt-4">
+                <Button variant="secondary" onClick={() => setModal('registrar_saldo')}>
+                  Registrar pago del saldo
+                </Button>
               </div>
             )}
           </CardContent>
@@ -222,35 +402,26 @@ export default function DetalleInscripcion() {
           </CardContent>
         </Card>
 
-        {/* Comprobante */}
+        {/* Comprobantes */}
         <Card>
           <CardHeader>
-            <CardTitle>Comprobante de pago</CardTitle>
+            <CardTitle>{esReserva ? 'Comprobante de la reserva (50 %)' : 'Comprobante de pago'}</CardTitle>
           </CardHeader>
           <CardContent>
-            {comprobanteUrl ? (
-              <div className="flex flex-col gap-2">
-                <img
-                  src={comprobanteUrl}
-                  alt="Comprobante de pago"
-                  className="max-w-full max-h-72 object-contain rounded-xl border border-[var(--color-border)]"
-                />
-                <div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(comprobanteUrl, '_blank')}
-                  >
-                    <ZoomIn size={14} />
-                    Ampliar
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[var(--color-muted-foreground)]">No hay comprobante adjunto.</p>
-            )}
+            <VistaComprobante url={comprobanteUrl} ruta={inscripcion.url_comprobante} />
           </CardContent>
         </Card>
+
+        {esReserva && (inscripcion.url_comprobante_saldo || inscripcion.estado_pago !== 'saldo_pendiente') && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Comprobante del saldo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VistaComprobante url={comprobanteSaldoUrl} ruta={inscripcion.url_comprobante_saldo} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Acciones */}
         {esPendiente ? (
@@ -274,6 +445,10 @@ export default function DetalleInscripcion() {
           <p className="text-sm text-[var(--color-muted-foreground)]">
             ¿Deseas aprobar la inscripción <strong>{inscripcion.folio}</strong>?
             Esta acción no puede revertirse y se enviará notificación por correo.
+            {esReserva && (
+              <> Es una <strong>reserva del 50 %</strong>: el correo indicará un saldo pendiente
+              de <strong>{colones(saldoReserva)}</strong>.</>
+            )}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={cerrarModal} disabled={procesando}>
@@ -298,7 +473,7 @@ export default function DetalleInscripcion() {
               Se incluirá en el correo al solicitante.
             </p>
             <textarea
-              className="w-full min-h-[100px] rounded-xl border border-[var(--color-input)] px-3 py-2.5 text-sm resize-none bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]"
+              className={claseTextarea}
               placeholder="Motivo del rechazo (obligatorio)..."
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
@@ -318,6 +493,121 @@ export default function DetalleInscripcion() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal: Confirmar saldo */}
+      <Dialog open={modal === 'confirmar_saldo'} onOpenChange={(v) => !v && cerrarModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar pago del saldo</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            ¿Confirmas que recibiste el saldo de <strong>{colones(saldo)}</strong> para{' '}
+            <strong>{inscripcion.folio}</strong>? La inscripción quedará con pago completo y se
+            enviará el correo de confirmación.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={cerrarModal} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button onClick={() => accionSaldo('confirmar_saldo')} disabled={procesando}>
+              {procesando ? 'Procesando...' : 'Sí, confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Rechazar comprobante del saldo (motivo obligatorio) */}
+      <Dialog open={modal === 'rechazar_saldo'} onOpenChange={(v) => !v && cerrarModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rechazar comprobante del saldo</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              La inscripción sigue aprobada y vuelve a <strong>saldo pendiente</strong>. El
+              responsable verá este motivo al consultar y podrá subir otro comprobante.
+            </p>
+            <textarea
+              className={claseTextarea}
+              placeholder="Motivo (obligatorio)..."
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cerrarModal} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => accionSaldo('rechazar_saldo')}
+              disabled={procesando || !motivo.trim()}
+            >
+              {procesando ? 'Procesando...' : 'Rechazar comprobante'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Registrar saldo directamente (comprobante opcional) */}
+      <Dialog open={modal === 'registrar_saldo'} onOpenChange={(v) => !v && cerrarModal()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar pago del saldo</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              Registra el saldo de <strong>{colones(saldo)}</strong> recibido por fuera del sistema
+              (WhatsApp, en persona…). La inscripción quedará con pago completo y se enviará el
+              correo de confirmación.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--color-foreground)]">
+                Comprobante <span className="font-normal text-[var(--color-muted-foreground)]">(opcional)</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={procesando}
+                onChange={(e) => setArchivoSaldo(e.target.files?.[0] ?? null)}
+                className="text-sm text-[var(--color-foreground)] file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[var(--color-secondary)] file:text-[var(--color-primary)] hover:file:opacity-80"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cerrarModal} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button onClick={() => accionSaldo('registrar_saldo')} disabled={procesando}>
+              {procesando ? 'Procesando...' : 'Registrar pago'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function VistaComprobante({ url, ruta }: { url: string | null; ruta: string | null }) {
+  if (!url) {
+    return <p className="text-sm text-[var(--color-muted-foreground)]">No hay comprobante adjunto.</p>
+  }
+  const esPdf = ruta?.toLowerCase().endsWith('.pdf')
+  return (
+    <div className="flex flex-col gap-2">
+      {!esPdf && (
+        <img
+          src={url}
+          alt="Comprobante de pago"
+          className="max-w-full max-h-72 object-contain rounded-xl border border-[var(--color-border)]"
+        />
+      )}
+      <div>
+        <Button variant="secondary" size="sm" onClick={() => window.open(url, '_blank')}>
+          <ZoomIn size={14} />
+          {esPdf ? 'Abrir PDF' : 'Ampliar'}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -60,10 +60,22 @@ Representa el envío colectivo de un grupo de participantes bajo un único compr
 | `telefono_contacto` | Teléfono del responsable |
 | `correo_contacto` | Correo electrónico del responsable (destino de las notificaciones) |
 | `fecha_creacion` | Timestamp del INSERT, zona horaria `America/Costa_Rica` |
+| `tipo_pago` | `completo` / `reserva` — elegido al crear (formulario público o registro manual); no cambia. Las filas previas quedan `completo`. *(003)* |
+| `estado_pago` | `completo` / `saldo_pendiente` / `saldo_en_revision` — independiente de `estado`. Inicia en `completo` (tipo `completo`) o `saldo_pendiente` (tipo `reserva`). *(003)* |
+| `url_comprobante_saldo` | Comprobante del segundo pago (mismo bucket privado). Nullable. *(003)* |
+| `motivo_rechazo_saldo` | Motivo del último rechazo del comprobante del saldo; visible en la consulta pública. Nullable. *(003)* |
+| `fecha_pago_saldo` | Momento en que la reserva pasó a `completo`. Nullable. *(003)* |
+| `fecha_edicion` | Última edición desde el panel. Nullable. *(003)* |
+
+Montos derivados (servidor, no almacenados por el cliente): monto de reserva =
+`ceil(monto_esperado / 2)`; saldo = `monto_esperado − monto de reserva`. Ver
+`003-edicion-reserva-pago/spec.md`.
 
 **Quién opera sobre esta entidad:**
 - Sitio público (`/sitio`): **CREA** filas nuevas vía INSERT atómico con estado inicial `pendiente`.
 - Panel administrativo (`/admin`): **LEE** todas las filas; **MODIFICA** el campo `estado` a `aprobada` o `rechazada` (transición definitiva, no reversible) y, al rechazar, `motivo_rechazo`.
+- Panel administrativo (`/admin`): **EDITA** los datos de contacto en inscripciones `pendiente`/`aprobada` y gestiona `estado_pago` (confirmar/rechazar/registrar saldo) — ver `003-edicion-reserva-pago/spec.md`.
+- Sitio público (`/sitio`): con folio + cédula válidos, **ADJUNTA** el comprobante del saldo (`saldo_pendiente` → `saldo_en_revision`) mediante una función de servidor — única escritura pública posterior al alta (requiere enmienda del Principio II).
 - Panel administrativo (`/admin`): también **CREA** filas nuevas directamente (registro manual por el administrador cuando el pago fue verificado fuera del sistema — ver `002-panel-administrativo/spec.md`, HU6), con las mismas reglas de cálculo de servidor que el sitio público (folio, `modalidad_tarifa`, `monto_esperado`), pero sin exigir comprobante (`url_comprobante` queda `null`).
 
 ---
@@ -84,6 +96,7 @@ Representa a cada persona individual inscrita dentro de un grupo.
 **Quién opera sobre esta entidad:**
 - Sitio público (`/sitio`): **CREA** filas nuevas en el mismo INSERT atómico que la Inscripción.
 - Panel administrativo (`/admin`): **LEE** la lista completa de participantes de cada inscripción al visualizar su detalle.
+- Panel administrativo (`/admin`): **EDITA** cédula, nombre, apellidos, género y talla de los participantes existentes (sin agregar ni quitar) — ver `003-edicion-reserva-pago/spec.md`.
 - Panel administrativo (`/admin`): también **CREA** filas nuevas en el mismo INSERT atómico del registro manual de inscripción (HU6 — ver `002-panel-administrativo/spec.md`).
 
 ---
@@ -111,11 +124,14 @@ datos (no hay CRUD de tarifas en el panel; sí de **Descuentos** sobre ella — 
 | `fecha_inicio` | Inicio de vigencia (timestamptz) |
 | `fecha_fin` | Fin de vigencia (timestamptz) |
 | `activa` | Booleano de habilitación manual. En esta versión, exactamente **una** fila `activa = true`. |
+| `permite_reserva` | Booleano, `default false`. Interruptor del admin en Tarifas: habilita la opción "Reserva 50 %" en el formulario público. Expuesto por `obtener_tarifa_vigente()`. *(003)* |
 
 **Quién opera sobre esta entidad:**
 - Sitio público (`/sitio`): **NO** tiene SELECT directo (sin política RLS pública). Lee la
   tarifa vigente solo vía la RPC `obtener_tarifa_vigente()` (SECURITY DEFINER, clave `anon`),
-  que devuelve `modalidad`, `monto_por_persona`, `monto_final_con_descuento` y `fecha_fin`.
+  que devuelve `modalidad`, `monto_por_persona`, `monto_final_con_descuento`, `fecha_fin` y
+  `permite_reserva`.
+- Panel administrativo (`/admin`): **MODIFICA** `permite_reserva` (interruptor en Tarifas).
 - Panel administrativo (`/admin`): **LEE** la fila activa (rol `authenticated`) para mostrar
   la tarjeta "Tarifa vigente".
 

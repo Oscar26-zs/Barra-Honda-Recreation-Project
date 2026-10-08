@@ -4,7 +4,8 @@ import { Button } from '../components/ui/button'
 import { supabase } from '../lib/supabase'
 import type { Inscripcion, Participante } from '../types'
 import { useBreakpoint } from '../hooks/useBreakpoint'
-import type { FiltroEstado } from '../hooks/useInscripciones'
+import { columnaFiltro, type FiltroEstado } from '../hooks/useInscripciones'
+import { LABEL_ESTADO_PAGO, LABEL_TIPO_PAGO, montoPagado, saldoPendiente } from '../lib/pago'
 
 // Known Gap #1: pendiente confirmar con propietario si estilo es sólido (primary)
 // o tint (secondary) en desktop. Mobile muestra "Exportar" abreviado.
@@ -84,7 +85,7 @@ export default function ExportarExcel({ filtro, busqueda }: ExportarExcelProps) 
         .order('fecha_creacion', { ascending: false })
 
       if (filtro !== 'todas') {
-        query = query.eq('estado', filtro)
+        query = query.eq(columnaFiltro(filtro), filtro)
       }
       if (busqueda.trim()) {
         const q = busqueda.trim()
@@ -98,7 +99,10 @@ export default function ExportarExcel({ filtro, busqueda }: ExportarExcelProps) 
       const XLSX = await import('xlsx-js-style')
 
       // ── Hoja 1: Inscripciones (una fila por inscripción) ──────────────────
-      const cabInsc = ['Folio', 'Contacto', 'Teléfono', 'Correo', 'Personas', 'Modalidad', 'Monto', 'Estado', 'Fecha']
+      const cabInsc = [
+        'Folio', 'Contacto', 'Teléfono', 'Correo', 'Personas', 'Modalidad', 'Monto', 'Estado',
+        'Tipo de pago', 'Estado del pago', 'Pagado', 'Saldo', 'Fecha',
+      ]
       const filasInsc = inscripciones.map((i) => [
         i.folio ?? '',
         i.nombre_contacto,
@@ -108,6 +112,10 @@ export default function ExportarExcel({ filtro, busqueda }: ExportarExcelProps) 
         i.modalidad_tarifa,
         i.monto_esperado,
         i.estado,
+        LABEL_TIPO_PAGO[i.tipo_pago],
+        LABEL_ESTADO_PAGO[i.estado_pago],
+        montoPagado(i),
+        saldoPendiente(i),
         fecha(i.fecha_creacion),
       ])
 
@@ -156,7 +164,7 @@ export default function ExportarExcel({ filtro, busqueda }: ExportarExcelProps) 
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(
         wb,
-        construirHoja(XLSX, cabInsc, filasInsc, [cabInsc.indexOf('Monto')]),
+        construirHoja(XLSX, cabInsc, filasInsc, ['Monto', 'Pagado', 'Saldo'].map((c) => cabInsc.indexOf(c))),
         'Inscripciones',
       )
       XLSX.utils.book_append_sheet(

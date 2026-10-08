@@ -11,6 +11,8 @@ const OPCIONES: { value: FiltroEstado; label: string }[] = [
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'aprobada', label: 'Aprobada' },
   { value: 'rechazada', label: 'Rechazada' },
+  { value: 'saldo_pendiente', label: 'Saldo pendiente' },
+  { value: 'saldo_en_revision', label: 'Saldo en revisión' },
 ]
 
 interface FiltrosInscripcionesProps {
@@ -34,7 +36,7 @@ export default function FiltrosInscripciones({ filtro, onChange }: FiltrosInscri
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>Filtrar por estado</SheetTitle>
+              <SheetTitle>Filtrar por estado o pago</SheetTitle>
               <button onClick={() => setSheetOpen(false)} className="text-[var(--color-muted-foreground)]">
                 <X size={18} />
               </button>

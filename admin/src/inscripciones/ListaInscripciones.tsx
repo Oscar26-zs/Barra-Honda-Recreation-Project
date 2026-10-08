@@ -10,6 +10,7 @@ import BuscadorInscripciones from './BuscadorInscripciones'
 import FiltrosInscripciones from './FiltrosInscripciones'
 import ExportarExcel from './ExportarExcel'
 import Paginacion from './Paginacion'
+import { LABEL_ESTADO_PAGO } from '../lib/pago'
 
 function EstadoBadge({ estado }: { estado: EstadoInscripcion }) {
   const labels: Record<EstadoInscripcion, string> = {
@@ -18,6 +19,12 @@ function EstadoBadge({ estado }: { estado: EstadoInscripcion }) {
     rechazada: 'Rechazada',
   }
   return <Badge variant={estado}>{labels[estado]}</Badge>
+}
+
+// Solo se muestra cuando hay saldo por cobrar (spec 003, FR-047).
+function PagoBadge({ ins }: { ins: Inscripcion }) {
+  if (ins.estado_pago === 'completo') return null
+  return <Badge variant={ins.estado_pago}>{LABEL_ESTADO_PAGO[ins.estado_pago]}</Badge>
 }
 
 function TarjetaMobile({ ins }: { ins: Inscripcion }) {
@@ -29,7 +36,10 @@ function TarjetaMobile({ ins }: { ins: Inscripcion }) {
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-[var(--color-primary)]">{ins.folio}</span>
-        <EstadoBadge estado={ins.estado} />
+        <div className="flex gap-1.5">
+          <PagoBadge ins={ins} />
+          <EstadoBadge estado={ins.estado} />
+        </div>
       </div>
       <p className="text-sm text-[var(--color-foreground)] font-medium">{ins.nombre_contacto}</p>
       <div className="flex gap-4 text-xs text-[var(--color-muted-foreground)]">
@@ -114,7 +124,10 @@ export default function ListaInscripciones() {
                     ₡{ins.monto_esperado?.toLocaleString('es-CR')}
                   </td>
                   <td className="px-4 py-3">
-                    <EstadoBadge estado={ins.estado} />
+                    <div className="flex flex-wrap gap-1.5">
+                      <EstadoBadge estado={ins.estado} />
+                      <PagoBadge ins={ins} />
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--color-muted-foreground)]">
                     {new Date(ins.fecha_creacion).toLocaleDateString('es-CR')}
