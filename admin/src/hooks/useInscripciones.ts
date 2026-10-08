@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Inscripcion, Participante } from '../types'
+import type { Inscripcion, Participante, TipoPago } from '../types'
 
-export type FiltroEstado = 'todas' | 'pendiente' | 'aprobada' | 'rechazada'
+// Los dos últimos filtran por estado del pago (spec 003, FR-047); el resto por estado.
+export type FiltroEstado =
+  | 'todas' | 'pendiente' | 'aprobada' | 'rechazada'
+  | 'saldo_pendiente' | 'saldo_en_revision'
+
+export function columnaFiltro(filtro: Exclude<FiltroEstado, 'todas'>): 'estado' | 'estado_pago' {
+  return filtro === 'saldo_pendiente' || filtro === 'saldo_en_revision' ? 'estado_pago' : 'estado'
+}
 
 interface CrearInscripcionManualParams {
   nombre_contacto: string
@@ -11,6 +18,7 @@ interface CrearInscripcionManualParams {
   cantidad_personas: number
   participantes: Omit<Participante, 'id' | 'inscripcion_id'>[]
   urlComprobante?: string | null
+  tipoPago: TipoPago
 }
 
 export const PAGINAS_DISPONIBLES = [10, 15, 20, 25] as const
@@ -32,7 +40,7 @@ export function useInscripciones() {
       .order('fecha_creacion', { ascending: false })
 
     if (filtro !== 'todas') {
-      query = query.eq('estado', filtro)
+      query = query.eq(columnaFiltro(filtro), filtro)
     }
 
     if (busqueda.trim()) {
@@ -104,6 +112,7 @@ export function useInscripciones() {
         cantidad_personas: params.cantidad_personas,
         url_comprobante: params.urlComprobante ?? null,
         estado: 'pendiente',
+        tipo_pago: params.tipoPago,
       })
       .select('id')
       .single()

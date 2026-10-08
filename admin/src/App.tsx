@@ -5,6 +5,7 @@ import AppLayout from './layout/AppLayout'
 import ListaInscripciones from './inscripciones/ListaInscripciones'
 import DetalleInscripcion from './inscripciones/DetalleInscripcion'
 import NuevaInscripcion from './inscripciones/NuevaInscripcion'
+import EditarInscripcion from './inscripciones/EditarInscripcion'
 import TarifasPage from './tarifas/TarifasPage'
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/inscripciones" element={<ListaInscripciones />} />
           <Route path="/inscripciones/nueva" element={<NuevaInscripcion />} />
           <Route path="/inscripciones/:id" element={<DetalleInscripcion />} />
+          <Route path="/inscripciones/:id/editar" element={<EditarInscripcion />} />
           <Route path="/tarifas" element={<TarifasPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/inscripciones" replace />} />

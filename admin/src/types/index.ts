@@ -1,4 +1,6 @@
 export type EstadoInscripcion = 'pendiente' | 'aprobada' | 'rechazada'
+export type TipoPago = 'completo' | 'reserva'
+export type EstadoPago = 'completo' | 'saldo_pendiente' | 'saldo_en_revision'
 export type EstadoDescuento = 'Programado' | 'Activo' | 'Vencido'
 
 export interface Inscripcion {
@@ -14,6 +16,12 @@ export interface Inscripcion {
   cantidad_personas: number
   monto_esperado: number
   fecha_creacion: string
+  tipo_pago: TipoPago
+  estado_pago: EstadoPago
+  url_comprobante_saldo: string | null
+  motivo_rechazo_saldo: string | null
+  fecha_pago_saldo: string | null
+  fecha_edicion: string | null
 }
 
 export type Genero = 'Hombre' | 'Mujer'
@@ -35,6 +43,7 @@ export interface Tarifa {
   fecha_inicio: string
   fecha_fin: string
   activa: boolean
+  permite_reserva: boolean
 }
 
 export interface Descuento {

@@ -9,7 +9,7 @@
  */
 import imageCompression from 'browser-image-compression'
 import { supabase, supabaseConfigurado } from './supabase'
-import type { PayloadCrearInscripcion, ResultadoCrearInscripcion } from './tipos'
+import type { PayloadCrearInscripcion, ResultadoCrearInscripcion, TipoPago } from './tipos'
 
 /** Límite objetivo tras compresión (MB). Coherente con el nivel gratuito de Storage. */
 const MAX_MB = 1
@@ -56,6 +56,7 @@ export async function subirComprobante(original: File, blob: Blob): Promise<stri
 export type ResultadoEnvio =
   | { estado: 'ok'; resultado: ResultadoCrearInscripcion }
   | { estado: 'sin-tarifa' }
+  | { estado: 'sin-reserva' }
   | { estado: 'sin-config' }
   | { estado: 'error' }
 
@@ -68,6 +69,7 @@ export async function enviarInscripcion(
   responsable: PayloadCrearInscripcion['responsable'],
   participantes: PayloadCrearInscripcion['participantes'],
   comprobante: File,
+  tipo_pago: TipoPago,
 ): Promise<ResultadoEnvio> {
   if (!supabaseConfigurado) return { estado: 'sin-config' }
 
@@ -75,12 +77,14 @@ export async function enviarInscripcion(
     const blob = await comprimirComprobante(comprobante)
     const url_comprobante = await subirComprobante(comprobante, blob)
 
-    const payload: PayloadCrearInscripcion = { responsable, url_comprobante, participantes }
+    const payload: PayloadCrearInscripcion = { responsable, url_comprobante, participantes, tipo_pago }
     const { data, error } = await supabase.rpc('crear_inscripcion', { payload })
 
     if (error) {
       // La RPC lanza un error controlado cuando no hay tarifa activa (FR-023).
       if (/tarifa/i.test(error.message)) return { estado: 'sin-tarifa' }
+      // El admin apagó la reserva 50 % mientras la persona llenaba el formulario.
+      if (/reserva/i.test(error.message)) return { estado: 'sin-reserva' }
       return { estado: 'error' }
     }
 
@@ -91,9 +95,38 @@ export async function enviarInscripcion(
         folio: fila.folio,
         cantidad_personas: Number(fila.cantidad_personas ?? participantes.length),
         monto_esperado: Number(fila.monto_esperado ?? 0),
+        tipo_pago: fila.tipo_pago === 'reserva' ? 'reserva' : 'completo',
+        monto_reserva: fila.monto_reserva == null ? null : Number(fila.monto_reserva),
       },
     }
   } catch {
     return { estado: 'error' }
+  }
+}
+
+/**
+ * Pago del saldo de una reserva (spec 003, HU9): subir el comprobante (ya comprimido
+ * y validado por la isla) → RPC
+ * subir_comprobante_saldo (SECURITY DEFINER, anon; constitución v2.1.0, Principio II).
+ * La RPC revalida folio + cédula y solo responde true/false: nunca revela cuál falló.
+ */
+export async function enviarComprobanteSaldo(
+  folio: string,
+  cedula: string,
+  comprobante: File,
+  blob: Blob,
+): Promise<'ok' | 'rechazado' | 'sin-config' | 'error'> {
+  if (!supabaseConfigurado) return 'sin-config'
+  try {
+    const p_url = await subirComprobante(comprobante, blob)
+    const { data, error } = await supabase.rpc('subir_comprobante_saldo', {
+      p_folio: folio,
+      p_cedula: cedula,
+      p_url,
+    })
+    if (error) return 'error'
+    return data === true ? 'ok' : 'rechazado'
+  } catch {
+    return 'error'
   }
 }

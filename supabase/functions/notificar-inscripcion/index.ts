@@ -1,10 +1,14 @@
 // Edge Function: notificar-inscripcion
 // ----------------------------------------------------------------------------
 // Envía el correo al responsable del grupo cuando una inscripción cambia de
-// estado (pendiente → aprobada | rechazada). Constitución, Principio VI.
+// estado (pendiente → aprobada | rechazada) o cuando una reserva queda pagada
+// por completo. Constitución v2.1.0, Principio VI.
 //
-// La invoca el PANEL ADMINISTRATIVO (spec 002) tras aprobar/rechazar, con:
-//   POST { "inscripcion_id": "<uuid>", "nuevo_estado": "aprobada" | "rechazada" }
+// La invoca el PANEL ADMINISTRATIVO (specs 002 y 003) con:
+//   POST { "inscripcion_id": "<uuid>", "nuevo_estado": "aprobada" | "rechazada" | "pago_completo" }
+//
+// Si la inscripción es una reserva (tipo_pago = 'reserva'), el correo de
+// aprobación es la variante "Reserva confirmada" con el saldo pendiente.
 //
 // Proveedor de correo: Brevo (https://www.brevo.com) — API transaccional.
 // No requiere dominio propio: basta verificar UNA dirección remitente
@@ -23,9 +27,12 @@
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automáticamente.
 // ----------------------------------------------------------------------------
 
+type Evento = 'aprobada' | 'rechazada' | 'pago_completo'
+const EVENTOS: Evento[] = ['aprobada', 'rechazada', 'pago_completo']
+
 interface Payload {
   inscripcion_id?: string
-  nuevo_estado?: 'aprobada' | 'rechazada'
+  nuevo_estado?: Evento
 }
 
 interface Inscripcion {
@@ -37,6 +44,7 @@ interface Inscripcion {
   monto_esperado: number
   modalidad_tarifa: string
   motivo_rechazo: string | null
+  tipo_pago: 'completo' | 'reserva' | null
 }
 
 const CORS = {
@@ -53,8 +61,59 @@ const json = (body: unknown, status = 200) =>
 
 const colones = (n: number) => `₡${Math.round(n).toLocaleString('es-CR')}`
 
-function plantilla(ins: Inscripcion, estado: 'aprobada' | 'rechazada', siteUrl: string) {
+// Misma regla que public.monto_reserva(): 50 % redondeado hacia arriba al colón.
+const montoReserva = (total: number) => Math.ceil(total / 2)
+
+const fila = (label: string, valor: string) =>
+  `<tr><td style="padding:4px 12px 4px 0;color:#4d6478">${label}</td><td style="padding:4px 0">${valor}</td></tr>`
+
+function plantilla(ins: Inscripcion, estado: Evento, siteUrl: string) {
   const consultar = `${siteUrl.replace(/\/$/, '')}/consultar`
+  if (estado === 'aprobada' && ins.tipo_pago === 'reserva') {
+    const pagado = montoReserva(ins.monto_esperado)
+    return {
+      subject: `Tu reserva ${ins.folio} fue confirmada — MTB El Valle del Nacaome`,
+      html: `
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0a1022;line-height:1.6">
+          <h2 style="color:#2575b2;margin:0 0 8px">¡Reserva confirmada!</h2>
+          <p>Hola ${ins.nombre_contacto},</p>
+          <p>Recibimos el pago del <strong>50 %</strong> y tu reserva para el
+             <strong>MTB El Valle del Nacaome</strong> quedó <strong>confirmada</strong>.</p>
+          <table style="border-collapse:collapse;margin:16px 0">
+            ${fila('Folio', `<strong>${ins.folio}</strong>`)}
+            ${fila('Personas', String(ins.cantidad_personas))}
+            ${fila('Monto total', colones(ins.monto_esperado))}
+            ${fila('Pagado', colones(pagado))}
+            ${fila('Saldo pendiente', `<strong>${colones(ins.monto_esperado - pagado)}</strong>`)}
+          </table>
+          <p>Para completar tu inscripción, pagá el saldo y subí el comprobante en
+             <a href="${consultar}" style="color:#2575b2">${consultar}</a> con tu folio y cédula,
+             o envialo a la recreativa por nuestras redes sociales.</p>
+          <p style="color:#4d6478;font-size:14px">Te enviaremos otro correo cuando confirmemos el pago completo.</p>
+        </div>`,
+    }
+  }
+  if (estado === 'pago_completo') {
+    return {
+      subject: `Pago completo de tu inscripción ${ins.folio} — MTB El Valle del Nacaome`,
+      html: `
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0a1022;line-height:1.6">
+          <h2 style="color:#2575b2;margin:0 0 8px">¡Pago completo!</h2>
+          <p>Hola ${ins.nombre_contacto},</p>
+          <p>Confirmamos el pago del saldo. Tu inscripción para el
+             <strong>MTB El Valle del Nacaome</strong> está <strong>pagada por completo</strong>.</p>
+          <table style="border-collapse:collapse;margin:16px 0">
+            ${fila('Folio', `<strong>${ins.folio}</strong>`)}
+            ${fila('Personas', String(ins.cantidad_personas))}
+            ${fila('Total pagado', colones(ins.monto_esperado))}
+          </table>
+          <p>Nos vemos el <strong>domingo 6 de diciembre de 2026</strong>, 7:00 a.m., en el
+             Gimnasio de la Escuela de Barra Honda.</p>
+          <p style="color:#4d6478;font-size:14px">Podés consultar tu inscripción en
+             <a href="${consultar}" style="color:#2575b2">${consultar}</a>.</p>
+        </div>`,
+    }
+  }
   if (estado === 'aprobada') {
     return {
       subject: `Tu inscripción ${ins.folio} fue aprobada — MTB El Valle del Nacaome`,
@@ -121,13 +180,13 @@ Deno.serve(async (req: Request) => {
   }
 
   const { inscripcion_id, nuevo_estado } = body
-  if (!inscripcion_id || (nuevo_estado !== 'aprobada' && nuevo_estado !== 'rechazada')) {
-    return json({ error: 'inscripcion_id y nuevo_estado (aprobada|rechazada) son obligatorios' }, 400)
+  if (!inscripcion_id || !nuevo_estado || !EVENTOS.includes(nuevo_estado)) {
+    return json({ error: 'inscripcion_id y nuevo_estado (aprobada|rechazada|pago_completo) son obligatorios' }, 400)
   }
 
   // 1. Traer la inscripción con la service_role key (solo servidor).
   const cols =
-    'folio,estado,nombre_contacto,correo_contacto,cantidad_personas,monto_esperado,modalidad_tarifa,motivo_rechazo'
+    'folio,estado,nombre_contacto,correo_contacto,cantidad_personas,monto_esperado,modalidad_tarifa,motivo_rechazo,tipo_pago'
   const resSel = await fetch(
     `${SUPABASE_URL}/rest/v1/inscripciones?id=eq.${inscripcion_id}&select=${cols}`,
     { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } },

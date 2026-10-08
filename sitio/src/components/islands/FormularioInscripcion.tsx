@@ -12,7 +12,7 @@ import { obtenerTarifaVigente, type ResultadoTarifa } from '../../lib/tarifa'
 import { enviarInscripcion } from '../../lib/inscripcion'
 import { validarComprobante, validarCorreo, validarTamañoFinal } from '../../lib/validacion'
 import { comprimirComprobante } from '../../lib/inscripcion'
-import type { Participante, Responsable, ResultadoCrearInscripcion } from '../../lib/tipos'
+import type { Participante, Responsable, ResultadoCrearInscripcion, TipoPago } from '../../lib/tipos'
 import { formatoColones } from '../../lib/tipos'
 import Stepper from './inscripcion/Stepper'
 import PasoResponsable, {
@@ -57,6 +57,8 @@ export default function FormularioInscripcion() {
   const [participantes, setParticipantes] = useState<Participante[]>([participanteVacio()])
   const [activo, setActivo] = useState(0)
   const [comprobante, setComprobante] = useState<File | null>(null)
+  const [tipoPago, setTipoPago] = useState<TipoPago | ''>('')
+  const [errTipoPago, setErrTipoPago] = useState<string>()
 
   const [errResp, setErrResp] = useState<ErroresResponsable>({})
   const [errParts, setErrParts] = useState<Record<number, ErroresParticipante>>({})
@@ -83,6 +85,9 @@ export default function FormularioInscripcion() {
   }, [cantidad])
 
   const disponible = tarifa?.estado === 'ok'
+  // Sin el interruptor del admin no se ofrece la reserva: el pago es siempre completo.
+  const permiteReserva = tarifa?.estado === 'ok' && tarifa.tarifa.permite_reserva
+  const tipoPagoEfectivo: TipoPago | '' = permiteReserva ? tipoPago : 'completo'
 
   function goTo(n: number) {
     if (n <= maxStep) setStep(n)
@@ -138,11 +143,10 @@ export default function FormularioInscripcion() {
   async function enviar() {
     setErrorEnvio(null)
     const errArchivo = validarComprobante(comprobante)
-    if (errArchivo) {
-      setErrComp(errArchivo)
-      return
-    }
-    setErrComp(undefined)
+    const errPago = tipoPagoEfectivo ? undefined : 'Elige cómo vas a pagar.'
+    setErrComp(errArchivo)
+    setErrTipoPago(errPago)
+    if (errArchivo || errPago) return
     if (!disponible || tarifa?.estado !== 'ok') {
       setErrorEnvio('No hay una tarifa disponible en este momento. Intenta más tarde.')
       return
@@ -158,9 +162,15 @@ export default function FormularioInscripcion() {
         return
       }
 
-      const r = await enviarInscripcion(responsable, participantes, comprobante as File)
+      const r = await enviarInscripcion(responsable, participantes, comprobante as File, tipoPagoEfectivo as TipoPago)
       if (r.estado === 'ok') {
         setResultado(r.resultado)
+      } else if (r.estado === 'sin-reserva') {
+        setTipoPago('')
+        setTarifa(await obtenerTarifaVigente())
+        setErrorEnvio(
+          'La reserva con 50 % ya no está disponible. No se registró nada: revisa la opción de pago y vuelve a enviar.',
+        )
       } else if (r.estado === 'sin-tarifa') {
         setErrorEnvio(
           'No hay una tarifa activa en este momento, así que no se registró ninguna inscripción. Intenta cuando el evento reabra las inscripciones.',
@@ -226,6 +236,13 @@ export default function FormularioInscripcion() {
             <PasoComprobante
               tarifa={tarifa.tarifa}
               cantidad={cantidad}
+              permiteReserva={permiteReserva}
+              tipoPago={tipoPagoEfectivo}
+              errorTipoPago={errTipoPago}
+              onTipoPago={(t) => {
+                setTipoPago(t)
+                setErrTipoPago(undefined)
+              }}
               comprobante={comprobante}
               errorComprobante={errComp}
               errorEnvio={errorEnvio}
