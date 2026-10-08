@@ -32,7 +32,15 @@ export default function ConfirmacionEnvio({
       <p className="mt-6 text-sm text-slate leading-relaxed max-w-md mx-auto">
         {resultado.cantidad_personas}{' '}
         {resultado.cantidad_personas === 1 ? 'persona' : 'personas'} ·{' '}
-        {formatoColones(resultado.monto_esperado)}. Guarda este folio: lo necesitarás junto
+        {formatoColones(resultado.monto_esperado)}
+        {resultado.tipo_pago === 'reserva' && resultado.monto_reserva != null && (
+          <>
+            {' '}(reserva del 50 %: {formatoColones(resultado.monto_reserva)} pagados; saldo
+            pendiente de {formatoColones(resultado.monto_esperado - resultado.monto_reserva)},
+            que podrás pagar cuando aprobemos tu reserva)
+          </>
+        )}
+        . Guarda este folio: lo necesitarás junto
         con tu cédula para consultar el estado en la página “Consultar”. Te enviaremos un
         correo cuando el equipo revise el comprobante.
       </p>

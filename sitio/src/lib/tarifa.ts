@@ -31,6 +31,7 @@ export async function obtenerTarifaVigente(): Promise<ResultadoTarifa> {
         fila.monto_final_con_descuento ?? fila.monto_por_persona,
       ),
       fecha_fin: fila.fecha_fin,
+      permite_reserva: fila.permite_reserva === true,
     },
   }
 }

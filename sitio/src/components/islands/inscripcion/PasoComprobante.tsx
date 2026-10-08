@@ -1,18 +1,23 @@
 /*
- * Paso 3 — adjuntar el comprobante de pago del grupo (JPG/PNG/PDF, FR-004) + total
- * ESTIMADO (monto_final_con_descuento × cantidad) + envío.
+ * Paso 3 — elegir el tipo de pago (completo o reserva 50 %, spec 003 FR-044/045),
+ * adjuntar el comprobante de pago del grupo (JPG/PNG/PDF, FR-004) + total ESTIMADO
+ * (monto_final_con_descuento × cantidad) + envío.
  * El monto real lo congela el servidor (FR-022); aquí es solo informativo.
  * Fuente: desing/docs/07 → "Stepper de Inscríbete" · 03 (cifra total) · 02 (tokens)
  */
 import { useEffect, useRef, useState } from 'react'
-import type { TarifaVigente } from '../../../lib/tipos'
-import { formatoColones } from '../../../lib/tipos'
+import type { TarifaVigente, TipoPago } from '../../../lib/tipos'
+import { formatoColones, montoReserva } from '../../../lib/tipos'
 import { esImagen, esPdf } from '../../../lib/inscripcion'
 import { MensajeError, claseLabel } from './campos'
 
 interface Props {
   tarifa: TarifaVigente
   cantidad: number
+  permiteReserva: boolean
+  tipoPago: TipoPago | ''
+  errorTipoPago?: string
+  onTipoPago: (t: TipoPago) => void
   comprobante: File | null
   errorComprobante?: string
   errorEnvio: string | null
@@ -33,6 +38,10 @@ function pesoLegible(bytes: number): string {
 export default function PasoComprobante({
   tarifa,
   cantidad,
+  permiteReserva,
+  tipoPago,
+  errorTipoPago,
+  onTipoPago,
   comprobante,
   errorComprobante,
   errorEnvio,
@@ -42,6 +51,8 @@ export default function PasoComprobante({
   onEnviar,
 }: Props) {
   const total = tarifa.monto_final_con_descuento * cantidad
+  const reserva = montoReserva(total)
+  const aPagar = tipoPago === 'reserva' ? reserva : total
 
   return (
     <div className="bg-paper border border-river/20 p-5 sm:p-6 md:p-8">
@@ -53,8 +64,44 @@ export default function PasoComprobante({
         grupo.
       </p>
 
+      {permiteReserva && (
+        <div className="mt-6">
+          <span className={claseLabel}>¿Cómo vas a pagar? *</span>
+          <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(
+              [
+                ['completo', 'Pago completo', `Pagás ${formatoColones(total)} ahora.`],
+                ['reserva', 'Reserva 50 %', `Pagás ${formatoColones(reserva)} ahora y ${formatoColones(total - reserva)} después.`],
+              ] as const
+            ).map(([valor, titulo, detalle]) => (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => onTipoPago(valor)}
+                aria-pressed={tipoPago === valor}
+                className={`text-left px-4 py-3 border-2 transition-colors ${
+                  tipoPago === valor
+                    ? 'border-river bg-river/5'
+                    : errorTipoPago
+                      ? 'border-red-400 bg-red-50/40'
+                      : 'border-river/25 bg-cloud hover:border-river/60'
+                }`}
+              >
+                <span className="block font-poster font-bold text-sm tracking-[0.14em] uppercase text-ink">
+                  {titulo}
+                </span>
+                <span className="block text-xs text-slate mt-1">{detalle}</span>
+              </button>
+            ))}
+          </div>
+          <MensajeError>{errorTipoPago}</MensajeError>
+        </div>
+      )}
+
       <div className="mt-6">
-        <span className={claseLabel}>Comprobante de pago *</span>
+        <span className={claseLabel}>
+          {tipoPago === 'reserva' ? 'Comprobante de la reserva (50 %) *' : 'Comprobante de pago *'}
+        </span>
         <CargaComprobante
           archivo={comprobante}
           error={errorComprobante}
@@ -65,11 +112,17 @@ export default function PasoComprobante({
 
       <div className="mt-6 border-t border-river/15 pt-5">
         <p className="text-xs font-semibold tracking-[0.14em] uppercase text-slate">
-          Total estimado
+          {tipoPago === 'reserva' ? 'A pagar ahora (50 %)' : 'Total estimado'}
         </p>
         <p className="font-poster font-black text-3xl sm:text-4xl text-ink mt-1">
-          {formatoColones(total)}
+          {formatoColones(aPagar)}
         </p>
+        {tipoPago === 'reserva' && (
+          <p className="text-sm text-slate mt-1">
+            Total {formatoColones(total)} · saldo pendiente {formatoColones(total - reserva)}. El
+            saldo se paga después de que aprobemos tu reserva.
+          </p>
+        )}
         <p className="text-xs text-slate/60 mt-1">
           {cantidad} {cantidad === 1 ? 'persona' : 'personas'} ×{' '}
           {formatoColones(tarifa.monto_final_con_descuento)} · tarifa {tarifa.modalidad}. El

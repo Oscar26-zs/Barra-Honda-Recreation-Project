@@ -6,6 +6,16 @@
 export type ModalidadTarifa = 'Promocional' | 'Regular'
 export type EstadoInscripcion = 'pendiente' | 'aprobada' | 'rechazada'
 
+/** Spec 003 — reserva con 50 %. El estado del pago es independiente del estado. */
+export type TipoPago = 'completo' | 'reserva'
+export type EstadoPago = 'completo' | 'saldo_pendiente' | 'saldo_en_revision'
+
+/** Misma regla que public.monto_reserva() (migración 008): 50 % hacia arriba al colón.
+ *  Solo informativo: el servidor calcula los montos vinculantes. */
+export function montoReserva(total: number): number {
+  return Math.ceil(total / 2)
+}
+
 /**
  * Known Gap #3 (research.md §5): los valores exactos de `talla_camisa` no están fijados
  * en el spec ni en el modelo compartido. Set de jersey XS–4XL (confirmado por el
@@ -44,18 +54,24 @@ export interface TarifaVigente {
   monto_por_persona: number
   monto_final_con_descuento: number
   fecha_fin: string
+  /** Interruptor del admin (Tarifas): ofrecer la reserva 50 % en el formulario. */
+  permite_reserva: boolean
 }
 
 export interface PayloadCrearInscripcion {
   responsable: Responsable
   url_comprobante: string
   participantes: Participante[]
+  tipo_pago: TipoPago
 }
 
 export interface ResultadoCrearInscripcion {
   folio: string
   cantidad_personas: number
   monto_esperado: number
+  tipo_pago: TipoPago
+  /** Solo en reservas: monto pagado con el comprobante inicial. */
+  monto_reserva: number | null
 }
 
 export interface ResultadoConsulta {
@@ -63,6 +79,12 @@ export interface ResultadoConsulta {
   estado: EstadoInscripcion
   modalidad_tarifa: ModalidadTarifa
   cantidad_personas: number
+  monto_esperado: number
+  tipo_pago: TipoPago
+  estado_pago: EstadoPago
+  monto_pagado: number
+  saldo_pendiente: number
+  motivo_rechazo_saldo: string | null
 }
 
 /** Formatea un entero de colones como "₡18 000" (es-CR). */
